@@ -1,6 +1,7 @@
 import pygame
 import random
 import pymysql
+import pygame_gui
 
 # Pygame Initialization
 pygame.init()
@@ -20,8 +21,6 @@ def conectar_db():
         return None
 
 # En la función crear_cuenta: 
-
-  
 def crear_cuenta():
     connection = conectar_db()
     if connection is None:
@@ -91,7 +90,6 @@ def crear_cuenta():
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
-
 
 def login():
     connection = conectar_db()
@@ -206,18 +204,12 @@ def start_game():
     if user_id:
         juego(user_id)  
 
-
-
-
 ########################################################JUEGO############################################################################
-# Screen Setup
-screen = pygame.display.set_mode((700, 800))
-pygame.display.set_caption("PROYECTO")
-
 # Colors
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
 
 # Global Variables
 car_width = 40
@@ -251,7 +243,6 @@ def crear_obstaculos():
         obstaculo_y_2 = i * 120 + 40  # Espaciado de 120 píxeles
         obstaculo_velocidad_2 = 5
         obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, 80, 40, obstaculo_velocidad_2, random.randint(0, 300)])
-
 
 def dibujar_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
@@ -291,6 +282,30 @@ def reiniciar_juego(user_id):
 
     juego(user_id)
 
+def dibujar_botones(manager):
+    botones = {
+        "A": (750, 300),
+        "W": (800, 250),
+        "S": (800, 300),
+        "D": (850, 300)
+    }
+    for letra, pos in botones.items():
+        button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos[0], pos[1], 50, 50),
+                                              text=letra,
+                                              manager=manager)
+
+def mover_carro(letra):
+    global car_x, car_y
+    if letra == "A" and car_x > 0:
+        car_x -= velocidad
+    elif letra == "D" and car_x < 660:
+        car_x += velocidad
+    elif letra == "W" and car_y > 0:
+        car_y -= velocidad
+    elif letra == "S" and car_y < 700:
+        car_y += velocidad
+
+# ... código existente ...
 
 def juego(user_id):
     global car_x, car_y
@@ -304,8 +319,26 @@ def juego(user_id):
         print("Connection to database failed.")
         return
 
+    manager = pygame_gui.UIManager((900, 800))
+    dibujar_botones(manager)
+
+    # Definir las áreas de los botones de control
+    area_botones = [
+        pygame.Rect(750, 300, 50, 50),  # Botón A
+        pygame.Rect(800, 250, 50, 50),  # Botón W
+        pygame.Rect(800, 300, 50, 50),  # Botón S
+        pygame.Rect(850, 300, 50, 50)   # Botón D
+    ]
+
+    # Definir el área de exclusión
+    area_exclusion = pygame.Rect(700, 0, 200, 800)
+
     while running:
+        time_delta = clock.tick(40) / 1000.0
         screen.fill(WHITE)
+
+        # Dibujar la línea de división
+        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -319,19 +352,11 @@ def juego(user_id):
                     car_y -= velocidad
                 if event.key == pygame.K_s and car_y < 700:
                     car_y += velocidad
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    mover_carro(event.ui_element.text)
 
-                
-                if connection:
-                    try:
-                        with connection.cursor() as cursor:
-                            # Insert into Evento table
-                            cursor.execute(f"INSERT INTO Evento (Tecla) VALUES ('{event.unicode}')")
-                            evento_id = cursor.lastrowid
-                            # Insert into Teclas table
-                            cursor.execute(f"INSERT INTO Teclas (IdEvento, IdUsuario) VALUES ({evento_id}, {user_id})")
-                            connection.commit()
-                    except pymysql.MySQLError as e:
-                        print(f"Error executing query: {e}")
+            manager.process_events(event)
 
         # Dibujar el carro del jugador
         pygame.draw.rect(screen, RED, (car_x, car_y, car_width, car_height))
@@ -346,7 +371,8 @@ def juego(user_id):
                 if obstaculo[1] > 800:  # Si el obstáculo sale de la pantalla, reiniciarlo
                     obstaculo[1] = random.randint(-800, -80)
                     obstaculo[0] = obstaculo[0]  # Mantiene la posición x
-                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
+                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
+                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
 
                 # Comprobar colisiones con los obstáculos verticales
                 if (car_y < obstaculo[1] + obstaculo[3] and
@@ -364,7 +390,8 @@ def juego(user_id):
                 if obstaculo[0] > 700:  # Si el obstáculo sale de la pantalla, reiniciarlo
                     obstaculo[0] = random.randint(-800, -80)
                     obstaculo[1] = obstaculo[1]  # Mantiene la posición y
-                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
+                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
+                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
 
                 # Comprobar colisiones con los obstáculos horizontales
                 if (car_y < obstaculo[1] + obstaculo[3] and
@@ -375,12 +402,17 @@ def juego(user_id):
                     mostrar_pantalla_reinicio(user_id)
                     running = False
 
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
         pygame.display.update()
-        clock.tick(40)
 
     # Cerrar la conexión al final del juego
     connection.close()
 
+# Configurar la ventana de Pygame
+screen = pygame.display.set_mode((900, 800))
+pygame.display.set_caption("PROYECTO")
 
 # Iniciar el juego
 start_game()
