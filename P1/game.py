@@ -22,17 +22,13 @@ pygame.display.set_caption("Juego de Esquivar Carritos")
 matriz = [[0 for _ in range(10)] for _ in range(10)]
 matriz[5][5] = 1  # Inicializar el personaje en el centro
 
-# Inicializar obstáculos en posiciones de la parte superior de cada columna
-obstaculos = [(0, col) for col in range(10)]  # Un obstáculo en cada columna en la fila 0
+# Inicializar obstáculos
+obstaculos = [None] * 10  # Lista para almacenar las posiciones de los obstáculos
 obstaculos_tiempos = [random.randint(1000, 3000) for _ in range(10)]  # Temporizadores para cada columna
-
-# Marcar los obstáculos en la matriz
-for x, y in obstaculos:
-    matriz[x][y] = 2
 
 # Variables para el movimiento del personaje y obstáculos
 tiempo_ultimo_movimiento = pygame.time.get_ticks()
-intervalo_movimiento = 1000  # Milisegundos entre movimientos (1 segundo)
+intervalo_movimiento = 100  # Milisegundos entre movimientos (100 ms)
 tiempo_ultimo_dibujo = pygame.time.get_ticks()
 
 # Función para dibujar la matriz
@@ -78,24 +74,30 @@ def mover_obstaculos(matriz):
     nuevas_posiciones = []
     
     for i in range(len(obstaculos)):
-        x, y = obstaculos[i]
-        matriz[x][y] = 0  # Limpiar la posición anterior del obstáculo
-
-        # Mover obstáculo hacia abajo
-        if x < len(matriz) - 1:
-            nuevas_posiciones.append((x + 1, y))
+        # Obtener la posición actual del obstáculo
+        if obstaculos[i] is None:
+            # Comprobar si se debe generar un nuevo obstáculo
+            tiempo_actual = pygame.time.get_ticks()
+            if tiempo_actual - obstaculos_tiempos[i] > random.randint(1000, 3000):  # Esperar entre 1 y 3 segundos
+                nuevas_posiciones.append((0, i))  # Generar en la fila 0
+                obstaculos_tiempos[i] = tiempo_actual  # Reiniciar el temporizador
+            else:
+                nuevas_posiciones.append(None)  # Mantener vacío
         else:
-            nuevas_posiciones.append((x, y))  # Mantener posición si llega al final
+            x, y = obstaculos[i]
+            matriz[x][y] = 0  # Limpiar la posición anterior del obstáculo
 
-        # Generar un nuevo obstáculo en la parte superior con su temporizador
-        tiempo_actual = pygame.time.get_ticks()
-        if tiempo_actual - obstaculos_tiempos[i] > random.randint(1000, 3000):  # Esperar entre 1 y 3 segundos
-            nuevas_posiciones[i] = (0, y)  # Nuevo obstáculo en la fila 0
-            obstaculos_tiempos[i] = tiempo_actual  # Reiniciar el temporizador
+            # Mover obstáculo hacia abajo
+            if x < len(matriz) - 1:
+                nuevas_posiciones.append((x + 1, y))
+            else:
+                nuevas_posiciones.append(None)  # Eliminar obstáculo si llega al final
 
     # Actualizar la matriz con las nuevas posiciones de los obstáculos
-    for x, y in nuevas_posiciones:
-        matriz[x][y] = 2  # Colocar el obstáculo en la nueva posición
+    for nueva_pos in nuevas_posiciones:
+        if nueva_pos is not None:
+            x, y = nueva_pos
+            matriz[x][y] = 2  # Colocar el obstáculo en la nueva posición
 
     obstaculos = nuevas_posiciones
 
