@@ -6,33 +6,30 @@ pygame.init()
 
 # Dimensiones de la pantalla
 ANCHO, ALTO = 400, 400  # Ajustar para una matriz más pequeña
-TAMANO_CELDA = ANCHO // 10  # Matriz de 10x10
+TAMANO_CELDA = ANCHO // 7  # Matriz de 7x7
 
 # Colores
 BLANCO = (255, 255, 255)
 NEGRO = (0, 0, 0)
-ROJO = (255, 0, 0)
-AZUL = (0, 0, 255)
+ROJO = (255, 0, 0)  # Color rojo para obstáculos horizontales
+MORADO = (128, 0, 128)  # Color morado para obstáculos verticales
+AZUL = (0, 0, 255)  # Color azul para el personaje
 
 # Crear la pantalla
 pantalla = pygame.display.set_mode((ANCHO, ALTO))
 pygame.display.set_caption("Juego de Esquivar Carritos")
 
 # Matriz del juego: 0 es vacío, 1 es el personaje, 2 son obstáculos
-matriz = [[0 for _ in range(10)] for _ in range(10)]
-matriz[5][5] = 1  # Inicializar el personaje en el centro
+matriz = [[0 for _ in range(7)] for _ in range(7)]  # Cambiar a matriz de 7x7
+matriz[3][3] = 1  # Inicializar el personaje en el centro
 
 # Inicializar obstáculos
-obstaculos = [None] * 10  # Lista para almacenar las posiciones de los obstáculos verticales
-obstaculos_horizontales = []  # Lista para los obstáculos que vienen de los lados
-obstaculos_activos = 0  # Contador de obstáculos activos
-max_obstaculos = 5  # Máximo de obstáculos simultáneos
-tiempo_creacion_obstaculos = pygame.time.get_ticks()
+obstaculos = []
+tiempo_ultimo_obstaculo = pygame.time.get_ticks()
 
 # Variables para el movimiento del personaje y obstáculos
 tiempo_ultimo_movimiento = pygame.time.get_ticks()
-intervalo_movimiento = 100  # Milisegundos entre movimientos (100 ms)
-intervalo_obstaculos = 1000  # Mover los obstáculos cada 1000 ms (más lento)
+intervalo_obstaculos = 1500  # Intervalo de movimiento de obstáculos (en ms)
 tiempo_ultimo_dibujo = pygame.time.get_ticks()
 
 # Variable para controlar el estado del juego
@@ -47,7 +44,11 @@ def dibujar_matriz(matriz):
             if matriz[fila][columna] == 1:
                 pygame.draw.rect(pantalla, AZUL, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Personaje
             elif matriz[fila][columna] == 2:
-                pygame.draw.rect(pantalla, ROJO, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Obstáculo
+                # Dibuja los obstáculos según su tipo
+                if any(o[0] == fila and o[1] == columna and o[2] == "vertical" for o in obstaculos):
+                    pygame.draw.rect(pantalla, MORADO, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Obstáculo vertical
+                elif any(o[0] == fila and o[1] == columna and o[2] == "horizontal" for o in obstaculos):
+                    pygame.draw.rect(pantalla, ROJO, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Obstáculo horizontal
             else:
                 pygame.draw.rect(pantalla, BLANCO, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Espacio vacío
             pygame.draw.rect(pantalla, NEGRO, (x, y, TAMANO_CELDA, TAMANO_CELDA), 1)  # Bordes
@@ -81,75 +82,49 @@ def mover_personaje(matriz, direccion):
     else:
         # Colisión con un obstáculo
         return True  # Indicar que el juego ha terminado
+
 # Función para mover los obstáculos y generar nuevos
-
 def mover_obstaculos(matriz):
-    global obstaculos, obstaculos_horizontales, tiempo_creacion_obstaculos, obstaculos_activos
-    nuevas_posiciones = []
-    
+    global obstaculos, tiempo_ultimo_obstaculo
     tiempo_actual = pygame.time.get_ticks()
-    
-    # Generar nuevos obstáculos solo si hay menos de 5 activos
-    if obstaculos_activos < max_obstaculos and tiempo_actual - tiempo_creacion_obstaculos > 2000:
-        for i in range(len(obstaculos)):
-            if obstaculos_activos >= max_obstaculos:
-                break  # No generar más de 5 obstáculos
 
-            if obstaculos[i] is None and random.random() < 0.1:  # Probabilidad del 10% de generar un obstáculo vertical
-                obstaculos[i] = (0, i)  # Generar en la fila 0 (vertical)
-                obstaculos_activos += 1
+    # Mover obstáculos existentes
+    for obstaculo in obstaculos[:]:  # Usar una copia para evitar modificación durante la iteración
+        x, y, tipo = obstaculo
+        matriz[x][y] = 0  # Limpiar la posición anterior del obstáculo
 
-            if random.random() < 0.1 and obstaculos_activos < max_obstaculos:  # Probabilidad del 10% de generar obstáculos laterales
-                lado = random.choice(["izquierda", "derecha"])  # Generar a la izquierda o derecha
-                if lado == "izquierda":
-                    obstaculos_horizontales.append((i, 0, "derecha"))  # Obstáculo moviéndose hacia la derecha
-                else:
-                    obstaculos_horizontales.append((i, len(matriz[0]) - 1, "izquierda"))  # Obstáculo moviéndose hacia la izquierda
-                obstaculos_activos += 1
-        tiempo_creacion_obstaculos = tiempo_actual
-
-    # Mover los obstáculos verticales existentes hacia abajo
-    for i in range(len(obstaculos)):
-        if obstaculos[i] is not None:
-            x, y = obstaculos[i]
-            matriz[x][y] = 0  # Limpiar la posición anterior del obstáculo
-
-            # Mover obstáculo hacia abajo
+        # Mover obstáculo
+        if tipo == "horizontal":  # Mover horizontalmente
+            if y < len(matriz[0]) - 1:
+                obstaculo[1] += 1  # Mover hacia la derecha
+                matriz[x][y + 1] = 2  # Colocar el obstáculo en la nueva posición
+            else:
+                obstaculos.remove(obstaculo)  # Eliminar obstáculo si llega al final
+        elif tipo == "vertical":  # Mover verticalmente
             if x < len(matriz) - 1:
-                nuevas_posiciones.append((x + 1, y))
+                obstaculo[0] += 1  # Mover hacia abajo
+                matriz[x + 1][y] = 2  # Colocar el obstáculo en la nueva posición
             else:
-                nuevas_posiciones.append(None)  # Eliminar obstáculo si llega al final
-                obstaculos_activos -= 1  # Liberar espacio para un nuevo obstáculo
-        else:
-            nuevas_posiciones.append(None)
+                obstaculos.remove(obstaculo)  # Eliminar obstáculo si llega al final
 
-    # Mover los obstáculos horizontales hacia el centro
-    for obstaculo in obstaculos_horizontales:
-        if obstaculo is not None:
-            x, y, direccion = obstaculo
-            matriz[x][y] = 0  # Limpiar la posición anterior del obstáculo
+    # Generar nuevos obstáculos aleatoriamente
+    if tiempo_actual - tiempo_ultimo_obstaculo > random.randint(250, 1000):  # Aumentar la velocidad de aparición
+        tipo = random.choice(["horizontal", "vertical"])  # Elegir aleatoriamente el tipo de obstáculo
+        
+        if tipo == "horizontal":
+            fila = random.randint(0, 6)  # Cambiar el rango a 6 para filas de 0 a 6
+            # Comprobar si ya hay un obstáculo en esa fila
+            if not any(o[0] == fila and o[2] == "horizontal" for o in obstaculos):
+                obstaculos.append([fila, 0, "horizontal"])  # Añadir un nuevo obstáculo horizontal
+                matriz[fila][0] = 2  # Colocar el obstáculo en la matriz
+        elif tipo == "vertical":
+            columna = random.randint(0, 6)  # Cambiar el rango a 6 para columnas de 0 a 6
+            # Comprobar si ya hay un obstáculo en esa columna
+            if not any(o[1] == columna and o[2] == "vertical" for o in obstaculos):
+                obstaculos.append([0, columna, "vertical"])  # Añadir un nuevo obstáculo vertical
+                matriz[0][columna] = 2  # Colocar el obstáculo en la matriz
 
-            # Mover hacia la derecha o hacia la izquierda
-            if direccion == "derecha" and y < len(matriz[0]) - 1:
-                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = (x, y + 1, direccion)
-            elif direccion == "izquierda" and y > 0:
-                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = (x, y - 1, direccion)
-            else:
-                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = None  # Eliminar si llega al borde opuesto
-                obstaculos_activos -= 1  # Liberar espacio para un nuevo obstáculo
-
-    # Actualizar la matriz con las nuevas posiciones de los obstáculos
-    for nueva_pos in nuevas_posiciones:
-        if nueva_pos is not None:
-            x, y = nueva_pos
-            matriz[x][y] = 2  # Colocar el obstáculo en la nueva posición
-
-    for obstaculo in obstaculos_horizontales:
-        if obstaculo is not None:
-            x, y, _ = obstaculo
-            matriz[x][y] = 2  # Colocar el obstáculo horizontal en la nueva posición
-
-    obstaculos = nuevas_posiciones
+        tiempo_ultimo_obstaculo = tiempo_actual  # Actualizar el tiempo del último obstáculo
 
 # Bucle principal del juego
 corriendo = True
