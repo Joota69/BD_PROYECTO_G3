@@ -217,7 +217,7 @@ def login():
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
-##############################Juego#######################################
+
 def select_rank():
     connection = conectar_db()
     if connection is None:
@@ -257,7 +257,7 @@ def select_rank():
                     running = False
 
     return selected_rank
-
+##############################Juego#######################################
 def seleccionar_modo():
     running = True
     modo = None
