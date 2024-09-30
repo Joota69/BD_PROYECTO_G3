@@ -336,9 +336,10 @@ def start_game():
         elif modo == "jugar":
             juego(user_id)
 
-def visualizar_juego():
+def visualizar_juego(user_id):
     global car_x, car_y
     tiempo_total = 0
+    tiempo_envio = 0
     running = True
     crear_obstaculos()
 
@@ -406,7 +407,9 @@ def visualizar_juego():
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        imprimir_posicion_carro()  # Imprimir la posición del carro rojo
+        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
+            imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
+            tiempo_envio = 0  # Reiniciar el temporizador
 
         manager.update(time_delta)
         manager.draw_ui(screen)
@@ -496,10 +499,32 @@ def mover_obstaculos(obstaculos, direccion):
             if obstaculo[0] >= 700:
                 obstaculo[0] = random.randint(-20, -2) * grid_size
 
-def imprimir_posicion_carro():
-    x_cuadricula = (car_x // grid_size) +1
-    y_cuadricula = (car_y // grid_size) +1
-    print(f"Posición del carro rojo: X={x_cuadricula}, Y={y_cuadricula}")
+def actualizar_posicion_jugador(user_id, x, y):
+    print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                INSERT INTO Jugador (IdJugador, x, y) 
+                VALUES ({user_id}, {x}, {y})
+                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
+            """)
+            connection.commit()
+            print("Inserción/Actualización exitosa")
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
+
+def imprimir_posicion_carro(user_id):
+    x_cuadricula = (car_x // grid_size) + 1
+    y_cuadricula = (car_y // grid_size) + 1
+    print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
+    actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
 
 def manejar_movimiento_obstaculos(tiempo_total):
     if tiempo_total % 10 == 0:  # Mover los obstáculos cada 10 ticks
@@ -521,7 +546,30 @@ def mover_carro(letra):
 
 def juego(user_id):
     global car_x, car_y
+
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT x, y FROM Jugador WHERE IdJugador = {user_id}")
+            result = cursor.fetchone()
+            if result:
+                car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
+                car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
+            else:
+                car_x = 4 * grid_size  # Valor por defecto si no hay registros
+                car_y = 4 * grid_size  # Valor por defecto si no hay registros
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+        return
+    finally:
+        connection.close()
+
     tiempo_total = 0
+    tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
     running = True
     crear_obstaculos()
     
@@ -586,6 +634,7 @@ def juego(user_id):
         pygame.draw.rect(screen, RED, (car_x, car_y, grid_size, grid_size))
 
         tiempo_total += 1
+        tiempo_envio += time_delta  # Incrementar el tiempo transcurrido para el envío
 
         manejar_movimiento_obstaculos(tiempo_total)
 
@@ -619,7 +668,10 @@ def juego(user_id):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        imprimir_posicion_carro()  # Imprimir la posición del carro rojo
+        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
+            print("Enviando posición del carro a la base de datos")
+            imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
+            tiempo_envio = 0  # Reiniciar el temporizador
 
         manager.update(time_delta)
         manager.draw_ui(screen)
