@@ -5,7 +5,7 @@ import random
 pygame.init()
 
 # Dimensiones de la pantalla
-ANCHO, ALTO = 400, 400  # Ajustar para una matriz más pequeña
+ANCHO, ALTO = 700, 700  # Ajustar para una matriz más pequeña
 TAMANO_CELDA = ANCHO // 10  # Matriz de 10x10
 
 # Colores
