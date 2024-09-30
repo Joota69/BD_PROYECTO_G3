@@ -30,6 +30,15 @@ def crear_cuenta():
     password = ""
     focus = "username"  
 
+    input_box_username = pygame.Rect(226, 191, 140, 32)
+    input_box_password = pygame.Rect(220, 242, 140, 32)
+    color_inactive = pygame.Color('lightskyblue3')
+    color_active = pygame.Color('dodgerblue2')
+    color_username = color_inactive
+    color_password = color_inactive
+    active_username = False
+    active_password = False
+
     while running:
         screen.fill(WHITE)
         font = pygame.font.SysFont(None, 55)
@@ -37,10 +46,23 @@ def crear_cuenta():
         screen.blit(mensaje, (120, 100))
 
         font_small = pygame.font.SysFont(None, 30)
-        user_text = font_small.render(f"Username: {username}", True, BLACK)
-        pass_text = font_small.render(f"Password: {'*' * len(password)}", True, BLACK)
-        screen.blit(user_text, (120, 200))
-        screen.blit(pass_text, (120, 250))
+        label_username = font_small.render("Username:", True, BLACK)
+        label_password = font_small.render("Password:", True, BLACK)
+        user_text = font_small.render(username, True, BLACK)
+        pass_text = font_small.render('*' * len(password), True, BLACK)
+        
+        # Render the labels and current text.
+        screen.blit(label_username, (120, 200))
+        screen.blit(label_password, (120, 250))
+        screen.blit(user_text, (input_box_username.x+5, input_box_username.y+5))
+        screen.blit(pass_text, (input_box_password.x+5, input_box_password.y+5))
+        
+        # Draw the input boxes.
+        pygame.draw.rect(screen, color_username, input_box_username, 2)
+        pygame.draw.rect(screen, color_password, input_box_password, 2)
+
+        regresar_text = font_small.render("Regresar", True, BLACK)
+        screen.blit(regresar_text, (120, 300))
         
         pygame.display.update()
 
@@ -49,28 +71,46 @@ def crear_cuenta():
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_TAB:
-                    focus = "password" if focus == "username" else "username"
-                elif event.key == pygame.K_BACKSPACE:
-                    if focus == "username" and len(username) > 0:
+                if active_username:
+                    if event.key == pygame.K_BACKSPACE:
                         username = username[:-1]
-                    elif focus == "password" and len(password) > 0:
-                        password = password[:-1]
-                elif event.key == pygame.K_RETURN:
-                    running = False
-                else:
-                    if focus == "username" and event.unicode.isalnum():
+                    else:
                         username += event.unicode
-                    elif focus == "password" and event.unicode.isalnum():
+                if active_password:
+                    if event.key == pygame.K_BACKSPACE:
+                        password = password[:-1]
+                    else:
                         password += event.unicode
+                if event.key == pygame.K_RETURN:
+                    running = False
+                    
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # If the user clicked on the input_box_username rect.
+                if input_box_username.collidepoint(event.pos):
+                    active_username = not active_username
+                else:
+                    active_username = False
+                # If the user clicked on the input_box_password rect.
+                if input_box_password.collidepoint(event.pos):
+                    active_password = not active_password
+                else:
+                    active_password = False
+                # Change the current color of the input boxes.
+                color_username = color_active if active_username else color_inactive
+                color_password = color_active if active_password else color_inactive
+
+                if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
+                    return 
+
 
     selected_rank = select_rank()
     if not selected_rank:
-        print("No rank selected.")
+        print("Ningun Rango Seleccionado")
         return None
 
+    # Ensure selected rank is valid
     if selected_rank not in [1, 2, 3]:
-        print("Invalid rank selected!")
+        print("Rango seleccionado invalido")
         return None
 
     try:
@@ -80,13 +120,13 @@ def crear_cuenta():
                 print("Username already exists!")
                 return None
 
-            cursor.execute(f"INSERT INTO Usuarios (UserName, Contraseña, Rango_idRango) VALUES ('{username}', '{password}', {selected_rank})")
+            # Insert new user into the database
+            cursor.execute(f"INSERT INTO Usuarios (UserName, Contraseña, idRango) VALUES ('{username}', '{password}', {selected_rank})")
             connection.commit()
             return username
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
-
 def login():
     connection = conectar_db()
     if connection is None:
@@ -98,6 +138,15 @@ def login():
     password = ""
     focus = "username"  
 
+    input_box_username = pygame.Rect(226, 191, 140, 32)
+    input_box_password = pygame.Rect(221, 242, 140, 32)
+    color_inactive = pygame.Color('lightskyblue3')
+    color_active = pygame.Color('dodgerblue2')
+    color_username = color_inactive
+    color_password = color_inactive
+    active_username = False
+    active_password = False
+
     while running:
         screen.fill(WHITE)
         font = pygame.font.SysFont(None, 55)
@@ -107,8 +156,16 @@ def login():
         font_small = pygame.font.SysFont(None, 30)
         user_text = font_small.render(f"Username: {username}", True, BLACK)
         pass_text = font_small.render(f"Password: {'*' * len(password)}", True, BLACK)
+
         screen.blit(user_text, (120, 200))
         screen.blit(pass_text, (120, 250))
+        
+        pygame.draw.rect(screen, color_username, input_box_username, 2)
+        pygame.draw.rect(screen, color_password, input_box_password, 2)
+
+        # Botón para crear cuenta
+        crear_cuenta_text = font_small.render("Crear Cuenta", True, BLACK)
+        screen.blit(crear_cuenta_text, (120, 300))
         
         pygame.display.update()
 
@@ -117,20 +174,36 @@ def login():
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_TAB:
-                    focus = "password" if focus == "username" else "username"
-                elif event.key == pygame.K_BACKSPACE:
-                    if focus == "username" and len(username) > 0:
+                if active_username:
+                    if event.key == pygame.K_BACKSPACE:
                         username = username[:-1]
-                    elif focus == "password" and len(password) > 0:
-                        password = password[:-1]
-                elif event.key == pygame.K_RETURN:
-                    running = False
-                else:
-                    if focus == "username" and event.unicode.isalnum():
+                    else:
                         username += event.unicode
-                    elif focus == "password" and event.unicode.isalnum():
+                if active_password:
+                    if event.key == pygame.K_BACKSPACE:
+                        password = password[:-1]
+                    else:
                         password += event.unicode
+                if event.key == pygame.K_RETURN:
+                    running = False
+                    
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # If the user clicked on the input_box_username rect.
+                if input_box_username.collidepoint(event.pos):
+                    active_username = not active_username
+                else:
+                    active_username = False
+                # If the user clicked on the input_box_password rect.
+                if input_box_password.collidepoint(event.pos):
+                    active_password = not active_password
+                else:
+                    active_password = False
+                # Change the current color of the input boxes.
+                color_username = color_active if active_username else color_inactive
+                color_password = color_active if active_password else color_inactive
+                # Check if the user clicked on the "Crear Cuenta" button.
+                if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
+                    crear_cuenta()
 
     try:
         with connection.cursor() as cursor:
@@ -138,7 +211,7 @@ def login():
             cursor.execute(query)
             result = cursor.fetchone()
             if result and result[1] == password:
-                return result[0]
+                return result[0]  # Return User ID
             else:
                 return None
     except pymysql.MySQLError as e:
@@ -161,7 +234,7 @@ def select_rank():
         screen.blit(mensaje, (120, 100))
 
         font_small = pygame.font.SysFont(None, 30)
-        ranks = ["Noob", "Pro", "Hacker"]
+        ranks = ["Preione 1: Noob", "Presione 2: Pro", "Presione 3: Hacker"]
         for i, rank in enumerate(ranks):
             rank_text = font_small.render(rank, True, BLACK)
             screen.blit(rank_text, (120, 200 + i * 50))
@@ -253,7 +326,8 @@ def visualizar_juego():
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
-                        start_game()
+                        #start_game()
+                        seleccionar_modo()
                         return
 
             manager.process_events(event)
@@ -425,7 +499,8 @@ def juego(user_id):
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
-                        start_game()
+                        #start_game()
+                        seleccionar_modo()
                         return
                     mover_carro(event.ui_element.text)
 
@@ -520,7 +595,8 @@ def visualizar_juego():
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
-                        start_game()
+                        #start_game()
+                        seleccionar_modo()
                         return
 
             manager.process_events(event)
