@@ -5,6 +5,9 @@ import pygame_gui
 
 pygame.init()
 
+
+clock = pygame.time.Clock()
+
 def conectar_db():
     try:
         connection = pymysql.connect(
@@ -142,6 +145,7 @@ def crear_cuenta():
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
+
 def login():
     connection = conectar_db()
     if connection is None:
@@ -324,7 +328,7 @@ def start_game():
             juego(user_id)
 
 def visualizar_juego():
-    global car_x, car_y
+    global matriz, juego_terminado
     tiempo_total = 0
     running = True
     crear_obstaculos()
@@ -348,49 +352,17 @@ def visualizar_juego():
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
-                        #start_game()
                         seleccionar_modo()
                         return
 
             manager.process_events(event)
 
-        pygame.draw.rect(screen, RED, (car_x, car_y, car_width, car_height))
+        dibujar_matriz(matriz)
 
         tiempo_total += 1
 
-        for obstaculo in obstaculos_verticales:
-            if tiempo_total > obstaculo[5]:
-                obstaculo[1] += obstaculo[4]
-                if obstaculo[1] > 800:
-                    obstaculo[1] = random.randint(-800, -80)
-                    obstaculo[0] = obstaculo[0]
-                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-                if (car_y < obstaculo[1] + obstaculo[3] and
-                    car_y + car_height > obstaculo[1] and
-                    car_x < obstaculo[0] + obstaculo[2] and
-                    car_x + car_width > obstaculo[0]):
-                    print("¡Choque!")
-                    mostrar_pantalla_reinicio(None)
-                    running = False
-
-        for obstaculo in obstaculos_horizontales:
-            if tiempo_total > obstaculo[5]:
-                obstaculo[0] += obstaculo[4]
-                if obstaculo[0] > 700:
-                    obstaculo[0] = random.randint(-800, -80)
-                    obstaculo[1] = obstaculo[1]
-                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-                if (car_y < obstaculo[1] + obstaculo[3] and
-                    car_y + car_height > obstaculo[1] and
-                    car_x < obstaculo[0] + obstaculo[2] and
-                    car_x + car_width > obstaculo[0]):
-                    print("¡Choque!")
-                    mostrar_pantalla_reinicio(None)
-                    running = False
+        if tiempo_total % 25 == 0:
+            mover_obstaculos(matriz)
 
         manager.update(time_delta)
         manager.draw_ui(screen)
@@ -398,28 +370,24 @@ def visualizar_juego():
         pygame.display.update()
 
 def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
+    global obstaculos, obstaculos_horizontales, obstaculos_activos, tiempo_creacion_obstaculos
+    obstaculos = [None] * 10
     obstaculos_horizontales = []
-    
-    for i in range(6):
-        obstaculo_x_1 = i * 120 + 40
-        obstaculo_y_1 = random.randint(-800, -80)
-        obstaculo_velocidad_1 = 5
-        obstaculos_verticales.append([obstaculo_x_1, obstaculo_y_1, car_width, car_height, obstaculo_velocidad_1, random.randint(0, 300)])
+    obstaculos_activos = 0
+    tiempo_creacion_obstaculos = pygame.time.get_ticks()
 
-    for i in range(6):
-        obstaculo_x_2 = random.randint(-800, -80)
-        obstaculo_y_2 = i * 120 + 40
-        obstaculo_velocidad_2 = 5
-        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, 80, 40, obstaculo_velocidad_2, random.randint(0, 300)])
-
-def dibujar_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    for obstaculo in obstaculos_verticales:
-        pygame.draw.rect(screen, RED, obstaculo)
-    for obstaculo in obstaculos_horizontales:
-        pygame.draw.rect(screen, RED, obstaculo)
+def dibujar_matriz(matriz):
+    for fila in range(len(matriz)):
+        for columna in range(len(matriz[fila])):
+            x = columna * TAMANO_CELDA
+            y = fila * TAMANO_CELDA
+            if matriz[fila][columna] == 1:
+                pygame.draw.rect(screen, BLUE, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Personaje
+            elif matriz[fila][columna] == 2:
+                pygame.draw.rect(screen, RED, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Obstáculo
+            else:
+                pygame.draw.rect(screen, WHITE, (x, y, TAMANO_CELDA, TAMANO_CELDA))  # Espacio vacío
+            pygame.draw.rect(screen, BLACK, (x, y, TAMANO_CELDA, TAMANO_CELDA), 1)  # Bordes
 
 def mostrar_pantalla_reinicio(user_id):
     screen.fill(WHITE)
@@ -443,11 +411,11 @@ def mostrar_pantalla_reinicio(user_id):
                     reiniciar_juego(user_id)
 
 def reiniciar_juego(user_id):
-    global car_x, car_y
-    car_x = 180
-    car_y = 500
-    crear_obstaculos()  
-
+    global matriz, juego_terminado
+    matriz = [[0 for _ in range(10)] for _ in range(10)]
+    matriz[5][5] = 1
+    crear_obstaculos()
+    juego_terminado = False
     juego(user_id)
 
 def dibujar_botones(manager):
@@ -462,147 +430,172 @@ def dibujar_botones(manager):
                                               text=letra,
                                               manager=manager)
 
-
 def mover_carro(letra):
-    global car_x, car_y
-    if letra == "A" and car_x > 0:
-        car_x -= velocidad
-    elif letra == "D" and car_x < 660:
-        car_x += velocidad
-    elif letra == "W" and car_y > 0:
-        car_y -= velocidad
-    elif letra == "S" and car_y < 700:
-        car_y += velocidad
+    global matriz, juego_terminado
+    if letra == "A":
+        juego_terminado = mover_personaje(matriz, 'a')
+    elif letra == "D":
+        juego_terminado = mover_personaje(matriz, 'd')
+    elif letra == "W":
+        juego_terminado = mover_personaje(matriz, 'w')
+    elif letra == "S":
+        juego_terminado = mover_personaje(matriz, 's')
 
+def mover_personaje(matriz, direccion):
+    x, y = None, None
+
+    for i, fila in enumerate(matriz):
+        if 1 in fila:
+            x, y = i, fila.index(1)
+            break
+
+    if x is None or y is None:
+        return False
+
+    matriz[x][y] = 0
+
+    if direccion == 'w' and x > 0:
+        x -= 1
+    elif direccion == 's' and x < len(matriz) - 1:
+        x += 1
+    elif direccion == 'a' and y > 0:
+        y -= 1
+    elif direccion == 'd' and y < len(matriz[0]) - 1:
+        y += 1
+
+    if matriz[x][y] != 2:
+        matriz[x][y] = 1
+    else:
+        return True
+
+def mover_obstaculos(matriz):
+    global obstaculos, obstaculos_horizontales, tiempo_creacion_obstaculos, obstaculos_activos
+    nuevas_posiciones = []
+    
+    tiempo_actual = pygame.time.get_ticks()
+    
+    if obstaculos_activos < MAX_OBSTACULOS and tiempo_actual - tiempo_creacion_obstaculos > 2000:
+        for i in range(len(obstaculos)):
+            if obstaculos_activos >= MAX_OBSTACULOS:
+                break
+
+            if obstaculos[i] is None and random.random() < 0.1:
+                obstaculos[i] = (0, i)
+                obstaculos_activos += 1
+
+            if random.random() < 0.1 and obstaculos_activos < MAX_OBSTACULOS:
+                lado = random.choice(["izquierda", "derecha"])
+                if lado == "izquierda":
+                    obstaculos_horizontales.append((i, 0, "derecha"))
+                else:
+                    obstaculos_horizontales.append((i, len(matriz[0]) - 1, "izquierda"))
+                obstaculos_activos += 1
+        tiempo_creacion_obstaculos = tiempo_actual
+
+    for i in range(len(obstaculos)):
+        if obstaculos[i] is not None:
+            x, y = obstaculos[i]
+            matriz[x][y] = 0
+
+            if x < len(matriz) - 1:
+                nuevas_posiciones.append((x + 1, y))
+            else:
+                nuevas_posiciones.append(None)
+                obstaculos_activos -= 1
+        else:
+            nuevas_posiciones.append(None)
+
+    for obstaculo in obstaculos_horizontales:
+        if obstaculo is not None:
+            x, y, direccion = obstaculo
+            matriz[x][y] = 0
+
+            if direccion == "derecha" and y < len(matriz[0]) - 1:
+                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = (x, y + 1, direccion)
+            elif direccion == "izquierda" and y > 0:
+                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = (x, y - 1, direccion)
+            else:
+                obstaculos_horizontales[obstaculos_horizontales.index(obstaculo)] = None
+                obstaculos_activos -= 1
+
+    for nueva_pos in nuevas_posiciones:
+        if nueva_pos is not None:
+            x, y = nueva_pos
+            matriz[x][y] = 2
+
+    for obstaculo in obstaculos_horizontales:
+        if obstaculo is not None:
+            x, y, _ = obstaculo
+            matriz[x][y] = 2
+
+    obstaculos = nuevas_posiciones
 
 def juego(user_id):
-    global car_x, car_y
-    tiempo_total = 0
-    running = True
-    crear_obstaculos()
-    
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
+    global matriz, obstaculos, obstaculos_horizontales, obstaculos_activos, tiempo_creacion_obstaculos
+    matriz = [[0 for _ in range(10)] for _ in range(10)]
+    matriz[5][5] = 1
+    obstaculos = [None] * 10
+    obstaculos_horizontales = []
+    obstaculos_activos = 0
+    tiempo_creacion_obstaculos = pygame.time.get_ticks()
+    juego_terminado = False
 
-    manager = pygame_gui.UIManager((900, 800))
-    dibujar_botones(manager)
+    tiempo_ultimo_movimiento = pygame.time.get_ticks()
+    tiempo_ultimo_dibujo = pygame.time.get_ticks()
+    intervalo_movimiento = 100  # Milisegundos entre movimientos (100 ms)
+    intervalo_obstaculos = 1000  # Mover los obstáculos cada 1000 ms (más lento)
 
-    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((750, 10), (140, 50)),
-                                               text='Regresar',
-                                               manager=manager)
-
-    area_botones = [
-        pygame.Rect(750, 300, 50, 50),
-        pygame.Rect(800, 250, 50, 50),
-        pygame.Rect(800, 300, 50, 50),
-        pygame.Rect(850, 300, 50, 50)
-    ]
-
-    area_exclusion = pygame.Rect(700, 0, 200, 800)
-
-    while running:
-        time_delta = clock.tick(40) / 1000.0
-        screen.fill(WHITE)
-
-        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
-
+    while not juego_terminado:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_a and car_x > 0:
-                    car_x -= velocidad
-                    registrar_evento('A', user_id)
-                if event.key == pygame.K_d and car_x < 660:
-                    car_x += velocidad
-                    registrar_evento('D', user_id)
-                if event.key == pygame.K_w and car_y > 0:
-                    car_y -= velocidad
+                pygame.quit()
+                quit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_w:
+                    juego_terminado = mover_personaje(matriz, 'w')
                     registrar_evento('W', user_id)
-                if event.key == pygame.K_s and car_y < 700:
-                    car_y += velocidad
+                elif event.key == pygame.K_s:
+                    juego_terminado = mover_personaje(matriz, 's')
                     registrar_evento('S', user_id)
+                elif event.key == pygame.K_a:
+                    juego_terminado = mover_personaje(matriz, 'a')
+                    registrar_evento('A', user_id)
+                elif event.key == pygame.K_d:
+                    juego_terminado = mover_personaje(matriz, 'd')
+                    registrar_evento('D', user_id)
 
-             
+        tiempo_actual = pygame.time.get_ticks()
+        if tiempo_actual - tiempo_ultimo_movimiento > intervalo_obstaculos:
+            mover_obstaculos(matriz)
+            tiempo_ultimo_movimiento = tiempo_actual
 
-            if event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == back_button:
-                        #start_game()
-                        seleccionar_modo()
-                        return
-                    mover_carro(event.ui_element.text)
-                    registrar_evento(event.ui_element.text, user_id)
+        if tiempo_actual - tiempo_ultimo_dibujo > 100:
+            screen.fill(BLACK)
+            dibujar_matriz(matriz)
 
-            manager.process_events(event)
+            if juego_terminado:
+                font = pygame.font.Font(None, 74)
+                text = font.render("Game Over", True, BLACK)
+                screen.blit(text, (ANCHO // 2 - text.get_width() // 2, ALTO // 2 - text.get_height() // 2))
 
-        pygame.draw.rect(screen, RED, (car_x, car_y, car_width, car_height))
+            pygame.display.flip()
+            tiempo_ultimo_dibujo = tiempo_actual
 
-        tiempo_total += 1
+        pygame.time.delay(50)
 
-        for obstaculo in obstaculos_verticales:
-            if tiempo_total > obstaculo[5]:
-                obstaculo[1] += obstaculo[4]
-                if obstaculo[1] > 800:
-                    obstaculo[1] = random.randint(-800, -80)
-                    obstaculo[0] = obstaculo[0]
-                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-                if (car_y < obstaculo[1] + obstaculo[3] and
-                    car_y + car_height > obstaculo[1] and
-                    car_x < obstaculo[0] + obstaculo[2] and
-                    car_x + car_width > obstaculo[0]):
-                    print("¡Choque!")
-                    mostrar_pantalla_reinicio(user_id)
-                    running = False
-
-        for obstaculo in obstaculos_horizontales:
-            if tiempo_total > obstaculo[5]:
-                obstaculo[0] += obstaculo[4]
-                if obstaculo[0] > 700:
-                    obstaculo[0] = random.randint(-800, -80)
-                    obstaculo[1] = obstaculo[1]
-                if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                    pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-                if (car_y < obstaculo[1] + obstaculo[3] and
-                    car_y + car_height > obstaculo[1] and
-                    car_x < obstaculo[0] + obstaculo[2] and
-                    car_x + car_width > obstaculo[0]):
-                    print("¡Choque!")
-                    mostrar_pantalla_reinicio(user_id)
-                    running = False
-
-        manager.update(time_delta)
-        manager.draw_ui(screen)
-
-        pygame.display.update()
-
-    connection.close()
-
+# Definición de constantes
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
+BLUE = (0, 0, 255)  # Definición del color azul
 
-car_width = 40
-car_height = 80
-car_x = 180
-car_y = 500
-velocidad = 70
+ANCHO, ALTO = 400, 400
+TAMANO_CELDA = ANCHO // 10
+MAX_OBSTACULOS = 5  # Definición del máximo de obstáculos simultáneos
 
-obstaculos_verticales = []
-obstaculos_horizontales = []
-
-clock = pygame.time.Clock()
-
-screen = pygame.display.set_mode((900, 800))
+screen = pygame.display.set_mode((ANCHO, ALTO))
 pygame.display.set_caption("PROYECTO")
-
-
 
 start_game()
 pygame.quit()
