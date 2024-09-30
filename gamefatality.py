@@ -18,7 +18,7 @@ def conectar_db():
     except pymysql.MySQLError as e:
         print(f"Error connecting to database: {e}")
         return None
-
+#########################################################LOGIN#####################################################
 def registrar_evento(tecla, user_id):
     connection = conectar_db()
     if connection is None:
@@ -322,7 +322,7 @@ def seleccionar_modo():
                     running = False
 
     return modo
-
+####################################################Juego#######################################################################
 def start_game():
 
     user_id = None
@@ -607,7 +607,7 @@ def juego(user_id):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.KEYDOWN:
+            """ if event.type == pygame.KEYDOWN:  #en caso de emergencias papu
                 if event.key == pygame.K_a and car_x > 0:
                     car_x -= grid_size
                     registrar_evento('A', user_id)
@@ -619,14 +619,14 @@ def juego(user_id):
                     registrar_evento('W', user_id)
                 if event.key == pygame.K_s and car_y < 700:
                     car_y += grid_size
-                    registrar_evento('S', user_id)
+                    registrar_evento('S', user_id)"""# para mover las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
                         seleccionar_modo()
                         return
-                    mover_carro(event.ui_element.text)
+                        #mover_carro(event.ui_element.text)
                     registrar_evento(event.ui_element.text, user_id)
 
             manager.process_events(event)
