@@ -554,7 +554,7 @@ def juego(user_id):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT x, y FROM Jugador WHERE IdJugador = {user_id}")
+            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
             result = cursor.fetchone()
             if result:
                 car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
