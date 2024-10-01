@@ -3,6 +3,7 @@ import random
 import pymysql
 import pygame_gui
 
+
 pygame.init()
 
 def conectar_db():
@@ -18,7 +19,7 @@ def conectar_db():
     except pymysql.MySQLError as e:
         print(f"Error connecting to database: {e}")
         return None
-#########################################################LOGIN#####################################################
+   #########################################################LOGIN#####################################################
 def registrar_evento(tecla, user_id):
     connection = conectar_db()
     if connection is None:
@@ -332,7 +333,7 @@ def start_game():
     while True:
         modo = seleccionar_modo()
         if modo == "visualizar":
-            visualizar_juego(user_id)
+            visualizar_juego()
         elif modo == "jugar":
             juego(user_id)
 
@@ -688,10 +689,23 @@ def juego(user_id):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        if tiempo_envio >= 2:  # Verificar si han pasado 4 segundos
+        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
+
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                    connection.commit()  # Asegurarse de que los cambios se guarden
+
+                    cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+                    result = cursor.fetchone()
+                    if result:
+                        tecla_ganadora = result[0]
+                        mover_carro(tecla_ganadora)
+            except pymysql.MySQLError as e:
+                print(f"Error executing query: {e}")
 
         manager.update(time_delta)
         manager.draw_ui(screen)
