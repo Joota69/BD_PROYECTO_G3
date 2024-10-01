@@ -332,12 +332,34 @@ def start_game():
     while True:
         modo = seleccionar_modo()
         if modo == "visualizar":
-            visualizar_juego()
+            visualizar_juego(user_id)
         elif modo == "jugar":
             juego(user_id)
 
-def visualizar_juego(user_id):
+def visualizar_juego():
     global car_x, car_y
+
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
+            result = cursor.fetchone()
+            if result:
+                car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
+                car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
+            else:
+                car_x = 4 * grid_size  # Valor por defecto si no hay registros
+                car_y = 4 * grid_size  # Valor por defecto si no hay registros
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+        return
+    finally:
+        connection.close()
+
     tiempo_total = 0
     tiempo_envio = 0
     running = True
@@ -407,14 +429,12 @@ def visualizar_juego(user_id):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
-            imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
-            tiempo_envio = 0  # Reiniciar el temporizador
-
         manager.update(time_delta)
         manager.draw_ui(screen)
 
         pygame.display.update()
+    
+    connection.close()
 
 def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
@@ -598,7 +618,7 @@ def juego(user_id):
     matriz = crear_matriz(filas, columnas)
 
     while running:
-        time_delta = clock.tick(40) / 1000.0
+        time_delta = clock.tick(30) / 1000.0
         screen.fill(WHITE)
         dibujar_cuadricula()  # Dibujar la cuadrícula
 
@@ -668,7 +688,7 @@ def juego(user_id):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
+        if tiempo_envio >= 2:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
