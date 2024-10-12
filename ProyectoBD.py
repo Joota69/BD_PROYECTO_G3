@@ -306,7 +306,7 @@ def actualizar_matriz(matriz, obstaculos, valor):
         if 0 <= x < columnas and 0 <= y < filas: #verifica que esta dentro de la matriz
             matriz[y][x] = valor #Posicion del obstaculo
 
-#Función para seleccionar entre los dos modos entre 1. visualizar y 2, jugar
+#Función para seleccionar entre los dos modos entre 1. visualizar y 2. jugar
 def seleccionar_modo():
     running = True
     modo = None
@@ -334,10 +334,10 @@ def seleccionar_modo():
                 if event.key == pygame.K_1:
                     modo = "visualizar"
                     running = False
+            
                 elif event.key == pygame.K_2:
                     modo = "jugar"
                     running = False
-
     return modo
 
 ####################################################Juego#######################################################################
@@ -351,11 +351,15 @@ def start_game():
         modo = seleccionar_modo()
         if modo == "visualizar":
             visualizar_juego()
+            
         elif modo == "jugar":
             juego(user_id)
 
-# Cambiar las dimensiones del mapa en visualizar_juego
-# Cambiar las dimensiones del mapa en visualizar_juego
+
+
+
+
+# Funcion para visualizar el juego
 def visualizar_juego():
     global car_x, car_y
 
@@ -363,7 +367,7 @@ def visualizar_juego():
     if connection is None:
         print("Connection to database failed.")
         return
-
+### TEngo q revisarlo OJO
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
@@ -456,6 +460,9 @@ def visualizar_juego():
     
     connection.close()
 
+
+
+###################################################### OJO
 '''def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
     obstaculos_verticales = []
@@ -472,6 +479,46 @@ def visualizar_juego():
         obstaculo_y_2 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
         obstaculo_velocidad_2 = grid_size / 10  # Reducir la velocidad
         obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])'''
+
+'''def crear_obstaculos():
+    global obstaculos_verticales, obstaculos_horizontales
+    obstaculos_verticales = []
+    obstaculos_horizontales = []
+
+    # Definir posiciones fijas para los obstáculos verticales
+    posiciones_verticales = [
+        (1, 1),  # (x, y) en términos de celdas de la cuadrícula
+        (3, 2),
+        (5, 4),
+        (7, 6)
+    ]
+
+    # Definir posiciones fijas para los obstáculos horizontales
+    posiciones_horizontales = [
+        (2, 1),
+        (4, 3),
+        (6, 5),
+        (8, 7)
+    ]
+
+    # Crear obstáculos verticales en posiciones fijas
+    for pos in posiciones_verticales:
+        obstaculo_x = pos[0] * grid_size
+        obstaculo_y = pos[1] * grid_size
+        obstaculo_velocidad = grid_size / 10  # Velocidad fija
+        obstaculos_verticales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])
+
+    # Crear obstáculos horizontales en posiciones fijas
+    for pos in posiciones_horizontales:
+        obstaculo_x = pos[0] * grid_size
+        obstaculo_y = pos[1] * grid_size
+        obstaculo_velocidad = grid_size / 10  # Velocidad fija
+        obstaculos_horizontales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])'''
+#################################################### OJO
+
+
+
+
 
 def guardar_obstaculos_db():
     connection = conectar_db()
@@ -518,41 +565,6 @@ def leer_obstaculos_db():
     finally:
         connection.close()
 
-'''def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
-    obstaculos_horizontales = []
-
-    # Definir posiciones fijas para los obstáculos verticales
-    posiciones_verticales = [
-        (1, 1),  # (x, y) en términos de celdas de la cuadrícula
-        (3, 2),
-        (5, 4),
-        (7, 6)
-    ]
-
-    # Definir posiciones fijas para los obstáculos horizontales
-    posiciones_horizontales = [
-        (2, 1),
-        (4, 3),
-        (6, 5),
-        (8, 7)
-    ]
-
-    # Crear obstáculos verticales en posiciones fijas
-    for pos in posiciones_verticales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_verticales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])
-
-    # Crear obstáculos horizontales en posiciones fijas
-    for pos in posiciones_horizontales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_horizontales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])'''
-
 def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
     leer_obstaculos_db()
@@ -579,6 +591,8 @@ def dibujar_obstaculos():
     for obstaculo in obstaculos_horizontales:
         pygame.draw.rect(screen, RED, obstaculo)
 
+
+###############################################################################################################3
 def dibujar_cuadricula():
     for x in range(0, 700, grid_size):
         pygame.draw.line(screen, GRAY, (x, 0), (x, 800))
@@ -694,7 +708,7 @@ def mover_carro(letra):
     elif letra == "S" and car_y < 700:
         car_y += grid_size
 
-
+###########################################################################
 # Cambiar las dimensiones del mapa en juego
 def juego(user_id):
     global car_x, car_y
@@ -827,8 +841,8 @@ def juego(user_id):
 
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
-                    connection.commit()  # Asegurarse de que los cambios se guarden
+                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamamos al procedimiento almacenado
+                    connection.commit()  #Guardamos los cambios
 
                     cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
                     result = cursor.fetchone()
@@ -850,7 +864,7 @@ RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 
-grid_size = 80
+grid_size =80
 car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_width = grid_size 
