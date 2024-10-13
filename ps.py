@@ -926,7 +926,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                    cursor.execute("CALL ganadora4() ")  # Llamar al procedimiento almacenado
                     connection.commit()  # Asegurarse de que los cambios se guarden
 
                     cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")

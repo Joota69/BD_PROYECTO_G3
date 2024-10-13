@@ -584,6 +584,37 @@ def dibujar_cuadricula():
     for y in range(0, 800, grid_size):
         pygame.draw.line(screen, GRAY, (0, y), (700, y))
 
+def resetear_posiciones():
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            # Actualizar los obstáculos a posiciones en los bordes del área de juego
+            cursor.execute("UPDATE Obstaculos SET x = CASE idObstaculos "
+                           "WHEN 1 THEN 0 "  # Borde izquierdo
+                           "WHEN 2 THEN 7 "  # Borde derecho
+                           "WHEN 3 THEN 0 "  # Borde izquierdo
+                           "WHEN 4 THEN 7 END, "  # Borde derecho
+                           "y = CASE idObstaculos "
+                           "WHEN 1 THEN 0 "  # Borde superior
+                           "WHEN 2 THEN 0 "  # Borde superior
+                           "WHEN 3 THEN 7 "  # Borde inferior
+                           "WHEN 4 THEN 7 END "  # Borde inferior
+                           "WHERE idObstaculos IN (1, 2, 3, 4)")
+
+            # Actualizar la posición del jugador a su posición original
+            cursor.execute("UPDATE Jugador SET x = 4, y = 4 WHERE IdJugador = 1")
+
+            connection.commit()  # Confirmar los cambios
+            print("Posiciones de obstáculos y jugador reseteadas a sus valores originales.")
+    except pymysql.MySQLError as e:
+        print(f"Error ejecutando la consulta: {e}")
+    finally:
+        connection.close()
+
 def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
     global puntaje_total, votaciones, tiempo_inicio
     
@@ -595,6 +626,8 @@ def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
 
     # Registrar la partida en la base de datos
     registrar_partida(user_id, puntaje_total, tecla_ganadora_orden, id_jugador, tiempo_transcurrido)  # Pasar tiempo_transcurrido
+
+    resetear_posiciones()
 
     screen.fill(WHITE)
     fuente = pygame.font.SysFont(None, 55)
