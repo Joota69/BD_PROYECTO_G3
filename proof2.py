@@ -325,7 +325,7 @@ def seleccionar_modo():
     return modo
 ####################################################Juego#######################################################################
 def start_game():
-    global puntaje_total, votaciones, tiempo_inicio
+    global votaciones
     
     user_id = None
     while not user_id:
@@ -335,8 +335,7 @@ def start_game():
     id_jugador = None  # Puedes obtener este valor más adelante
     tecla_ganadora_orden = None  # O obtener este valor después
 
-    tiempo_inicio = pygame.time.get_ticks()  # Registrar el tiempo de inicio
-    puntaje_total = 0  # Resetear el puntaje total
+   
     votaciones = 0  # Resetear el contador de votaciones
 
     while True:
@@ -455,6 +454,23 @@ def visualizar_juego():
     
     connection.close()
 
+'''def crear_obstaculos():
+    global obstaculos_verticales, obstaculos_horizontales
+    obstaculos_verticales = []
+    obstaculos_horizontales = []
+    
+    for i in range(6):
+        obstaculo_x_1 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
+        obstaculo_y_1 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
+        obstaculo_velocidad_1 = grid_size / 10  # Reducir la velocidad
+        obstaculos_verticales.append([obstaculo_x_1, obstaculo_y_1, grid_size, grid_size, obstaculo_velocidad_1, random.randint(0, 300)])
+
+    for i in range(6):
+        obstaculo_x_2 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
+        obstaculo_y_2 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
+        obstaculo_velocidad_2 = grid_size / 10  # Reducir la velocidad
+        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])'''
+
 def guardar_obstaculos_db():
     connection = conectar_db()
     if connection is None:
@@ -500,6 +516,40 @@ def leer_obstaculos_db():
     finally:
         connection.close()
 
+'''def crear_obstaculos():
+    global obstaculos_verticales, obstaculos_horizontales
+    obstaculos_verticales = []
+    obstaculos_horizontales = []
+
+    # Definir posiciones fijas para los obstáculos verticales
+    posiciones_verticales = [
+        (1, 1),  # (x, y) en términos de celdas de la cuadrícula
+        (3, 2),
+        (5, 4),
+        (7, 6)
+    ]
+
+    # Definir posiciones fijas para los obstáculos horizontales
+    posiciones_horizontales = [
+        (2, 1),
+        (4, 3),
+        (6, 5),
+        (8, 7)
+    ]
+
+    # Crear obstáculos verticales en posiciones fijas
+    for pos in posiciones_verticales:
+        obstaculo_x = pos[0] * grid_size
+        obstaculo_y = pos[1] * grid_size
+        obstaculo_velocidad = grid_size / 10  # Velocidad fija
+        obstaculos_verticales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])
+
+    # Crear obstáculos horizontales en posiciones fijas
+    for pos in posiciones_horizontales:
+        obstaculo_x = pos[0] * grid_size
+        obstaculo_y = pos[1] * grid_size
+        obstaculo_velocidad = grid_size / 10  # Velocidad fija
+        obstaculos_horizontales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])'''
 
 def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
@@ -565,16 +615,9 @@ def resetear_posiciones():
         connection.close()
 
 def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
-    global puntaje_total, votaciones, tiempo_inicio
-    
-    tiempo_final = pygame.time.get_ticks()
-    tiempo_transcurrido = (tiempo_final - tiempo_inicio) / 1000  # En segundos
-
-    # Calcular el puntaje
-    puntaje_total = tiempo_transcurrido * votaciones
-
+    global votaciones
     # Registrar la partida en la base de datos
-    registrar_partida(user_id, puntaje_total, tecla_ganadora_orden, id_jugador, tiempo_transcurrido)  # Pasar tiempo_transcurrido
+    registrar_partida()  
 
     resetear_posiciones()
 
@@ -599,47 +642,16 @@ def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
                     reiniciar_juego(user_id)
 
 
-def registrar_partida(user_id, puntaje_total, id_jugador, tiempo_transcurrido,tecla_ganadora_orden):
+def registrar_partida():
     connection = conectar_db()
     if connection is None:
         print("Connection to database failed.")
         return
-
-    print(f"Puntaje total calculado: {puntaje_total}")
-    print(f"Tiempo transcurrido: {tiempo_transcurrido}, Votaciones: {votaciones}")
-
     try:
         with connection.cursor() as cursor:
             # Obtener el valor actual de la tecla ganadora
-            cursor.execute("SELECT Orden FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-            result = cursor.fetchone()
-            if result:
-                tecla_ganadora_orden = result[0]
-            else:
-                print("No se encontró una tecla ganadora.")
-                return
-
-            # Insertar el puntaje en la tabla Puntaje
-            query_puntaje = f"INSERT INTO Puntaje (Puntaje, tiempo) VALUES ({puntaje_total}, NOW())"
-            cursor.execute(query_puntaje)
+            cursor.execute("CALL historialpartida()")
             connection.commit()
-
-            # Obtener el IdPuntaje recién insertado
-            id_puntaje = cursor.lastrowid
-            print(f'el id_puntaje es:{id_puntaje}')
-
-            # Insertar la partida en la tabla Partida
-            query_partida = f"""
-                INSERT INTO Partida (Tecla_ganadora_Orden, IdJugador, IdPuntaje, Fechahora)
-                VALUES ({tecla_ganadora_orden}, {id_jugador}, {id_puntaje}, NOW())
-            """
-            cursor.execute(query_partida)
-            connection.commit()
-
-            print(f"Tecla_ganadora_Orden: {tecla_ganadora_orden}")
-            print(f"IdJugador: {id_jugador}")
-
-            print(f"Partida registrada con éxito con puntaje de {puntaje_total}, usuario {user_id}, y posición {id_jugador}")
     except pymysql.MySQLError as e:
         print(f"Error ejecutando la consulta: {e}")
     finally:
@@ -739,6 +751,7 @@ def mover_carro(letra):
     elif letra == "S" and car_y < 700:
         car_y += grid_size
 
+
 # Cambiar las dimensiones del mapa en juego
 def juego(user_id, id_jugador, tecla_ganadora_orden):
     global car_x, car_y
@@ -815,7 +828,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                     registrar_evento('W', user_id)
                 if event.key == pygame.K_s and car_y < 700:
                     car_y += grid_size
-                    registrar_evento('S', user_id)"""# para mover las teclas
+                    registrar_evento('S', user_id)"""# para mover con las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -901,9 +914,7 @@ car_width = grid_size
 car_height = grid_size
 velocidad = 40
 
-puntaje_total = 0
 votaciones = 0
-tiempo_inicio = 0
 
 obstaculos_verticales = []
 obstaculos_horizontales = []
