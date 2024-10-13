@@ -1,12 +1,8 @@
 import pygame
-import random
 import pymysql
 import pygame_gui
 
-
 pygame.init()
-
-# Conectamos con la base de datos con la credenciales creadas en raliway
 
 def conectar_db():
     try:
@@ -18,13 +14,10 @@ def conectar_db():
             port=39036
         )
         return connection
-    
     except pymysql.MySQLError as e:
         print(f"Error connecting to database: {e}")
         return None
-   
-# Nuestra función "registrar_evento" registra la tecla insertada y el usuario que inserto la tecla.
-   
+
 def registrar_evento(tecla, user_id):
     connection = conectar_db()
     if connection is None:
@@ -32,17 +25,13 @@ def registrar_evento(tecla, user_id):
         return
 
     try:
-        with connection.cursor() as cursor: #cursor de python para permitir ejecutar consultas en sql.
+        with connection.cursor() as cursor:
             cursor.execute(f"INSERT INTO Evento (IdUsuario, Tecla) VALUES ({user_id}, '{tecla}')")
             connection.commit()
-            
-    except pymysql.MySQLError as e: # Manejo de errores.
+    except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
-        
     finally:
         connection.close()
-
-#########################################################Crear Cuenta#####################################################
 
 def crear_cuenta():
     connection = conectar_db()
@@ -110,52 +99,48 @@ def crear_cuenta():
                     running = False
                     
             if event.type == pygame.MOUSEBUTTONDOWN:
-                #En caso de selccionar username
+                # If the user clicked on the input_box_username rect.
                 if input_box_username.collidepoint(event.pos):
                     active_username = not active_username
                 else:
                     active_username = False
-                #En caso de selccionar password
+                # If the user clicked on the input_box_password rect.
                 if input_box_password.collidepoint(event.pos):
                     active_password = not active_password
                 else:
                     active_password = False
-                # Cambiar color del bloque
+                # Change the current color of the input boxes.
                 color_username = color_active if active_username else color_inactive
                 color_password = color_active if active_password else color_inactive
 
                 if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
                     return 
 
-
     selected_rank = select_rank()
     if not selected_rank:
         print("Ningun Rango Seleccionado")
         return None
 
-    # En caso de nos estar dentro del rango
+    # Ensure selected rank is valid
     if selected_rank not in [1, 2, 3]:
         print("Rango seleccionado invalido")
         return None
 
     try:
-        # Cursos de python para verificar si existe un usuario en la base de datos
         with connection.cursor() as cursor:
             cursor.execute(f"SELECT * FROM Usuarios WHERE UserName='{username}'")
             if cursor.fetchone():
-                print("Nombre de usuario en uso!")
+                print("Username already exists!")
                 return None
 
-            # Insertamos nuevo usuario en nuesta base de datos
+            # Insert new user into the database
             cursor.execute(f"INSERT INTO Usuarios (UserName, Contraseña, idRango) VALUES ('{username}', '{password}', {selected_rank})")
-            connection.commit() #Subimos cambios
+            connection.commit()
             return username
-    #Manejo de errores
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
 
-#Función para inicio de sesión
 def login():
     connection = conectar_db()
     if connection is None:
@@ -177,7 +162,6 @@ def login():
     active_password = False
 
     while running:
-        
         screen.fill(WHITE)
         font = pygame.font.SysFont(None, 55)
         mensaje = font.render("Login", True, BLACK)
@@ -218,20 +202,20 @@ def login():
                     running = False
                     
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # 
+                # If the user clicked on the input_box_username rect.
                 if input_box_username.collidepoint(event.pos):
                     active_username = not active_username
                 else:
                     active_username = False
-                #
+                # If the user clicked on the input_box_password rect.
                 if input_box_password.collidepoint(event.pos):
                     active_password = not active_password
                 else:
                     active_password = False
-                # Cambio de color de la celda
+                # Change the current color of the input boxes.
                 color_username = color_active if active_username else color_inactive
                 color_password = color_active if active_password else color_inactive
-                # Verificar si presiona el botón "Crear Cuenta".
+                # Check if the user clicked on the "Crear Cuenta" button.
                 if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
                     crear_cuenta()
 
@@ -240,12 +224,10 @@ def login():
             query = f"SELECT IdUsuario, Contraseña FROM Usuarios WHERE UserName='{username}' AND Contraseña='{password}'"
             cursor.execute(query)
             result = cursor.fetchone()
-            
             if result and result[1] == password:
-                return result[0]  # Retorna User ID
+                return result[0]  # Return User ID
             else:
                 return None
-            
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return None
@@ -253,7 +235,7 @@ def login():
 def select_rank():
     connection = conectar_db()
     if connection is None:
-        print("Conexión con la base de datos fallida.")
+        print("Connection to database failed.")
         return None
 
     running = True
@@ -267,13 +249,12 @@ def select_rank():
 
         font_small = pygame.font.SysFont(None, 30)
         ranks = ["Preione 1: Noob", "Presione 2: Pro", "Presione 3: Hacker"]
-        
         for i, rank in enumerate(ranks):
             rank_text = font_small.render(rank, True, BLACK)
             screen.blit(rank_text, (120, 200 + i * 50))
 
         pygame.display.update()
-        #para seleccionar el rango
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -291,22 +272,17 @@ def select_rank():
 
     return selected_rank
 
-#####################################################JUEGO#########################################################################
-
-
 def crear_matriz(filas, columnas):
-    return [[0 for _ in range(columnas)] for _ in range(filas)] # Lista por compresión
+    return [[0 for _ in range(columnas)] for _ in range(filas)]
 
-# Obstaculo
 def actualizar_matriz(matriz, obstaculos, valor):
     filas = len(matriz)
     columnas = len(matriz[0])
     for obstaculo in obstaculos:
-        x, y = int(obstaculo[0] // grid_size), int(obstaculo[1] // grid_size) # Convierte la cordenada del obstaculo al indice de la cuadricula
-        if 0 <= x < columnas and 0 <= y < filas: #verifica que esta dentro de la matriz
-            matriz[y][x] = valor #Posicion del obstaculo
+        x, y = int(obstaculo[0] // grid_size), int(obstaculo[1] // grid_size)
+        if 0 <= x < columnas and 0 <= y < filas:
+            matriz[y][x] = valor
 
-#Función para seleccionar entre los dos modos entre 1. visualizar y 2. jugar
 def seleccionar_modo():
     running = True
     modo = None
@@ -329,20 +305,17 @@ def seleccionar_modo():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-                
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     modo = "visualizar"
                     running = False
-            
                 elif event.key == pygame.K_2:
                     modo = "jugar"
                     running = False
+
     return modo
 
-####################################################Juego#######################################################################
 def start_game():
-
     user_id = None
     while not user_id:
         user_id = login()
@@ -351,15 +324,9 @@ def start_game():
         modo = seleccionar_modo()
         if modo == "visualizar":
             visualizar_juego()
-            
         elif modo == "jugar":
             juego(user_id)
 
-
-
-
-
-# Funcion para visualizar el juego
 def visualizar_juego():
     global car_x, car_y
 
@@ -367,7 +334,7 @@ def visualizar_juego():
     if connection is None:
         print("Connection to database failed.")
         return
-### TEngo q revisarlo OJO
+
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
@@ -460,66 +427,6 @@ def visualizar_juego():
     
     connection.close()
 
-
-
-###################################################### OJO
-'''def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
-    obstaculos_horizontales = []
-    
-    for i in range(6):
-        obstaculo_x_1 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_y_1 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_velocidad_1 = grid_size / 10  # Reducir la velocidad
-        obstaculos_verticales.append([obstaculo_x_1, obstaculo_y_1, grid_size, grid_size, obstaculo_velocidad_1, random.randint(0, 300)])
-
-    for i in range(6):
-        obstaculo_x_2 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_y_2 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_velocidad_2 = grid_size / 10  # Reducir la velocidad
-        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])'''
-
-'''def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
-    obstaculos_horizontales = []
-
-    # Definir posiciones fijas para los obstáculos verticales
-    posiciones_verticales = [
-        (1, 1),  # (x, y) en términos de celdas de la cuadrícula
-        (3, 2),
-        (5, 4),
-        (7, 6)
-    ]
-
-    # Definir posiciones fijas para los obstáculos horizontales
-    posiciones_horizontales = [
-        (2, 1),
-        (4, 3),
-        (6, 5),
-        (8, 7)
-    ]
-
-    # Crear obstáculos verticales en posiciones fijas
-    for pos in posiciones_verticales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_verticales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])
-
-    # Crear obstáculos horizontales en posiciones fijas
-    for pos in posiciones_horizontales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_horizontales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])'''
-#################################################### OJO
-
-
-
-
-
 def guardar_obstaculos_db():
     connection = conectar_db()
     if connection is None:
@@ -576,6 +483,7 @@ def crear_obstaculos():
             [5 * grid_size, 4 * grid_size, grid_size, grid_size, grid_size / 10, 0],
             [7 * grid_size, 6 * grid_size, grid_size, grid_size, grid_size / 10, 0]
         ]
+
         obstaculos_horizontales = [
             [2 * grid_size, 1 * grid_size, grid_size, grid_size, grid_size / 10, 0],
             [4 * grid_size, 3 * grid_size, grid_size, grid_size, grid_size / 10, 0],
@@ -584,15 +492,8 @@ def crear_obstaculos():
         ]
         guardar_obstaculos_db()
 
-def dibujar_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    for obstaculo in obstaculos_verticales:
-        pygame.draw.rect(screen, RED, obstaculo)
-    for obstaculo in obstaculos_horizontales:
-        pygame.draw.rect(screen, RED, obstaculo)
 
 
-###############################################################################################################3
 def dibujar_cuadricula():
     for x in range(0, 700, grid_size):
         pygame.draw.line(screen, GRAY, (x, 0), (x, 800))
@@ -640,7 +541,6 @@ def dibujar_botones(manager):
                                               text=letra,
                                               manager=manager)
 
-
 def mover_obstaculos(obstaculos, direccion):
     for obstaculo in obstaculos:
         if direccion == 'vertical':
@@ -679,11 +579,6 @@ def imprimir_posicion_carro(user_id):
     print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
     actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
 
-'''def manejar_movimiento_obstaculos(tiempo_total):
-    if tiempo_total % 10 == 0:  # Mover los obstáculos cada 10 ticks
-        mover_obstaculos(obstaculos_verticales, 'vertical')
-        mover_obstaculos(obstaculos_horizontales, 'horizontal')'''
-
 def manejar_movimiento_obstaculos(tiempo_total):
     if tiempo_total % 10 == 0:  # Ajustar la frecuencia del movimiento
         for obstaculo in obstaculos_verticales:
@@ -696,7 +591,6 @@ def manejar_movimiento_obstaculos(tiempo_total):
                 obstaculo[0] = 0
         guardar_obstaculos_db()  # Guardar las posiciones actualizadas en la base de datos
 
-
 def mover_carro(letra):
     global car_x, car_y
     if letra == "A" and car_x > 0:
@@ -708,8 +602,6 @@ def mover_carro(letra):
     elif letra == "S" and car_y < 700:
         car_y += grid_size
 
-###########################################################################
-# Cambiar las dimensiones del mapa en juego
 def juego(user_id):
     global car_x, car_y
 
@@ -773,26 +665,12 @@ def juego(user_id):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            """ if event.type == pygame.KEYDOWN:  #en caso de emergencias papu
-                if event.key == pygame.K_a and car_x > 0:
-                    car_x -= grid_size
-                    registrar_evento('A', user_id)
-                if event.key == pygame.K_d and car_x < 660:
-                    car_x += grid_size
-                    registrar_evento('D', user_id)
-                if event.key == pygame.K_w and car_y > 0:
-                    car_y -= grid_size
-                    registrar_evento('W', user_id)
-                if event.key == pygame.K_s and car_y < 700:
-                    car_y += grid_size
-                    registrar_evento('S', user_id)"""# para mover las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
                         seleccionar_modo()
                         return
-                        #mover_carro(event.ui_element.text)
                     registrar_evento(event.ui_element.text, user_id)
 
             manager.process_events(event)
@@ -841,8 +719,8 @@ def juego(user_id):
 
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamamos al procedimiento almacenado
-                    connection.commit()  #Guardamos los cambios
+                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                    connection.commit()  # Asegurarse de que los cambios se guarden
 
                     cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
                     result = cursor.fetchone()
@@ -864,7 +742,7 @@ RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 
-grid_size =80
+grid_size = 80
 car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_width = grid_size 

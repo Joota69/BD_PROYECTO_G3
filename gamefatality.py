@@ -2,13 +2,14 @@ import pygame
 import random
 import pymysql
 import pygame_gui
-
+import asyncio
+import aiomysql
 
 pygame.init()
 
-def conectar_db():
+async def conectar_db_async():
     try:
-        connection = pymysql.connect(
+        connection = await aiomysql.connect(
             host='autorack.proxy.rlwy.net',  
             user='root',
             password='vCuAhonHujKoXRDoFxnNDIMdKmbKpJHX', 
@@ -16,9 +17,12 @@ def conectar_db():
             port=42773
         )
         return connection
-    except pymysql.MySQLError as e:
+    except aiomysql.MySQLError as e:
         print(f"Error connecting to database: {e}")
         return None
+    
+def conectar_db():
+    return asyncio.run(conectar_db_async())
    #########################################################LOGIN#####################################################
 def registrar_evento(tecla, user_id):
     connection = conectar_db()
@@ -337,6 +341,8 @@ def start_game():
         elif modo == "jugar":
             juego(user_id)
 
+# Cambiar las dimensiones del mapa en visualizar_juego
+# Cambiar las dimensiones del mapa en visualizar_juego
 def visualizar_juego():
     global car_x, car_y
 
@@ -373,7 +379,7 @@ def visualizar_juego():
 
     area_exclusion = pygame.Rect(700, 0, 200, 800)
 
-    filas, columnas = 20, 17  # Ajustar según el tamaño del mapa
+    filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
     matriz = crear_matriz(filas, columnas)
 
     while running:
@@ -437,7 +443,7 @@ def visualizar_juego():
     
     connection.close()
 
-def crear_obstaculos():
+'''def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
     obstaculos_verticales = []
     obstaculos_horizontales = []
@@ -452,7 +458,66 @@ def crear_obstaculos():
         obstaculo_x_2 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
         obstaculo_y_2 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
         obstaculo_velocidad_2 = grid_size / 10  # Reducir la velocidad
-        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])
+        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])'''
+
+async def guardar_obstaculos_db_async():
+    connection = await conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        async with connection.cursor() as cursor:
+            await cursor.execute("DELETE FROM Obstaculos")  # Limpiar la tabla de obstáculos
+            for obstaculo in obstaculos_verticales + obstaculos_horizontales:
+                await cursor.execute(f"INSERT INTO Obstaculos (X, Y) VALUES ({obstaculo[0]}, {obstaculo[1]})")
+            await connection.commit()
+    except aiomysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
+
+async def leer_obstaculos_db_async():
+    global obstaculos_verticales, obstaculos_horizontales
+    obstaculos_verticales = []
+    obstaculos_horizontales = []
+
+    connection = await conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        async with connection.cursor() as cursor:
+            await cursor.execute("SELECT X, Y FROM Obstaculos")
+            async for row in cursor:
+                x, y, tipo = row
+                if tipo == 'vertical':
+                    obstaculos_verticales.append([x, y, grid_size, grid_size, grid_size / 10, 0])
+                else:
+                    obstaculos_horizontales.append([x, y, grid_size, grid_size, grid_size / 10, 0])
+    except aiomysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
+
+def crear_obstaculos():
+    global obstaculos_verticales, obstaculos_horizontales
+    asyncio.run(leer_obstaculos_db_async())
+    if not obstaculos_verticales and not obstaculos_horizontales:
+        obstaculos_verticales = [
+            [1 * grid_size, 1 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [3 * grid_size, 2 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [5 * grid_size, 4 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [7 * grid_size, 6 * grid_size, grid_size, grid_size, grid_size / 10, 0]
+        ]
+        obstaculos_horizontales = [
+            [2 * grid_size, 1 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [4 * grid_size, 3 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [6 * grid_size, 5 * grid_size, grid_size, grid_size, grid_size / 10, 0],
+            [8 * grid_size, 7 * grid_size, grid_size, grid_size, grid_size / 10, 0]
+        ]
+        asyncio.run(guardar_obstaculos_db_async())
 
 def dibujar_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
@@ -565,6 +630,7 @@ def mover_carro(letra):
         car_y += grid_size
 
 
+# Cambiar las dimensiones del mapa en juego
 def juego(user_id):
     global car_x, car_y
 
@@ -615,7 +681,7 @@ def juego(user_id):
 
     area_exclusion = pygame.Rect(700, 0, 200, 800)
 
-    filas, columnas = 20, 17  # Ajustar según el tamaño del mapa
+    filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
     matriz = crear_matriz(filas, columnas)
 
     while running:
@@ -719,7 +785,7 @@ RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 
-grid_size = 40
+grid_size = 80
 car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_width = grid_size 
