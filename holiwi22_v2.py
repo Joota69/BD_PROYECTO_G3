@@ -325,12 +325,15 @@ def seleccionar_modo():
     return modo
 ####################################################Juego#######################################################################
 def start_game():
-
     global puntaje_total, votaciones, tiempo_inicio
     
     user_id = None
     while not user_id:
         user_id = login()
+
+    # Inicializa los valores de `id_jugador` y `tecla_ganadora_orden`
+    id_jugador = None  # Puedes obtener este valor más adelante
+    tecla_ganadora_orden = None  # O obtener este valor después
 
     tiempo_inicio = pygame.time.get_ticks()  # Registrar el tiempo de inicio
     puntaje_total = 0  # Resetear el puntaje total
@@ -341,7 +344,14 @@ def start_game():
         if modo == "visualizar":
             visualizar_juego()
         elif modo == "jugar":
-            juego(user_id)
+            if id_jugador is None:
+                # Aquí obtén el valor de `id_jugador` si es necesario
+                id_jugador = user_id  # O de donde corresponda
+            if tecla_ganadora_orden is None:
+                # Aquí obtén el valor de `tecla_ganadora_orden` si es necesario
+                tecla_ganadora_orden = 1  # O algún valor válido
+            juego(user_id, id_jugador, tecla_ganadora_orden)  # Pasar los tres argumentos
+
 
 # Cambiar las dimensiones del mapa en visualizar_juego
 # Cambiar las dimensiones del mapa en visualizar_juego
@@ -579,12 +589,12 @@ def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
     
     tiempo_final = pygame.time.get_ticks()
     tiempo_transcurrido = (tiempo_final - tiempo_inicio) / 1000  # En segundos
-    
+
     # Calcular el puntaje
     puntaje_total = tiempo_transcurrido * votaciones
 
     # Registrar la partida en la base de datos
-    registrar_partida(user_id, puntaje_total, tecla_ganadora_orden, id_jugador)
+    registrar_partida(user_id, puntaje_total, tecla_ganadora_orden, id_jugador, tiempo_transcurrido)  # Pasar tiempo_transcurrido
 
     screen.fill(WHITE)
     fuente = pygame.font.SysFont(None, 55)
@@ -606,29 +616,46 @@ def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
                     esperando = False
                     reiniciar_juego(user_id)
 
-def registrar_partida(user_id, puntaje_total, tecla_ganadora_orden, id_jugador):
+
+def registrar_partida(user_id, puntaje_total, id_jugador, tiempo_transcurrido,tecla_ganadora_orden):
     connection = conectar_db()
     if connection is None:
         print("Connection to database failed.")
         return
 
+    print(f"Puntaje total calculado: {puntaje_total}")
+    print(f"Tiempo transcurrido: {tiempo_transcurrido}, Votaciones: {votaciones}")
+
     try:
         with connection.cursor() as cursor:
-            # Primero insertar el puntaje en la tabla de puntajes
+            # Obtener el valor actual de la tecla ganadora
+            cursor.execute("SELECT Orden FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+            result = cursor.fetchone()
+            if result:
+                tecla_ganadora_orden = result[0]
+            else:
+                print("No se encontró una tecla ganadora.")
+                return
+
+            # Insertar el puntaje en la tabla Puntaje
             query_puntaje = f"INSERT INTO Puntaje (Puntaje, tiempo) VALUES ({puntaje_total}, NOW())"
             cursor.execute(query_puntaje)
             connection.commit()
 
             # Obtener el IdPuntaje recién insertado
-            id_puntaje = cursor.lastrowid  # Esto obtiene el último ID insertado
+            id_puntaje = cursor.lastrowid
+            print(f'el id_puntaje es:{id_puntaje}')
 
-            # Ahora insertar la nueva partida en la tabla de Partidas con el IdPuntaje y IdJugador
+            # Insertar la partida en la tabla Partida
             query_partida = f"""
-                INSERT INTO Partida (Tecla_ganadora_Orden, IdJugador, IdPuntaje, Fecha&hora)
+                INSERT INTO Partida (Tecla_ganadora_Orden, IdJugador, IdPuntaje, Fechahora)
                 VALUES ({tecla_ganadora_orden}, {id_jugador}, {id_puntaje}, NOW())
             """
             cursor.execute(query_partida)
             connection.commit()
+
+            print(f"Tecla_ganadora_Orden: {tecla_ganadora_orden}")
+            print(f"IdJugador: {id_jugador}")
 
             print(f"Partida registrada con éxito con puntaje de {puntaje_total}, usuario {user_id}, y posición {id_jugador}")
     except pymysql.MySQLError as e:
@@ -643,7 +670,12 @@ def reiniciar_juego(user_id):
     car_y = 4 * grid_size
     crear_obstaculos()  
 
-    juego(user_id)
+    # Necesitas obtener o pasar los valores correctos de id_jugador y tecla_ganadora_orden
+    id_jugador = user_id  # Asegúrate de que este valor esté disponible
+    tecla_ganadora_orden = 1  # O usa el valor adecuado que corresponda en tu lógica
+    
+    # Llama a juego con los tres argumentos correctos
+    juego(user_id, id_jugador, tecla_ganadora_orden)
 
 def dibujar_botones(manager):
     botones = {
@@ -726,7 +758,8 @@ def mover_carro(letra):
         car_y += grid_size
 
 
-def juego(user_id):
+# Cambiar las dimensiones del mapa en juego
+def juego(user_id, id_jugador, tecla_ganadora_orden):
     global car_x, car_y
 
     connection = conectar_db()
@@ -736,7 +769,7 @@ def juego(user_id):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT x, y FROM Jugador LIMIT 1")
+            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
             result = cursor.fetchone()
             if result:
                 car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
@@ -749,10 +782,6 @@ def juego(user_id):
         return
     finally:
         connection.close()
-
-    # Definir el id_jugador y tecla_ganadora_orden
-    id_jugador = ...  # Asignar el valor correcto
-    tecla_ganadora_orden = ...  # Asignar el valor correcto, tal vez un contador
 
     tiempo_total = 0
     tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
@@ -793,12 +822,27 @@ def juego(user_id):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            """ if event.type == pygame.KEYDOWN:  #en caso de emergencias papu
+                if event.key == pygame.K_a and car_x > 0:
+                    car_x -= grid_size
+                    registrar_evento('A', user_id)
+                if event.key == pygame.K_d and car_x < 660:
+                    car_x += grid_size
+                    registrar_evento('D', user_id)
+                if event.key == pygame.K_w and car_y > 0:
+                    car_y -= grid_size
+                    registrar_evento('W', user_id)
+                if event.key == pygame.K_s and car_y < 700:
+                    car_y += grid_size
+                    registrar_evento('S', user_id)"""# para mover las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
                         seleccionar_modo()
                         return
+                        #mover_carro(event.ui_element.text)
+                    registrar_evento(event.ui_element.text, user_id)
 
             manager.process_events(event)
 
@@ -821,7 +865,19 @@ def juego(user_id):
                 car_x < obstaculo[0] + obstaculo[2] and
                 car_x + grid_size > obstaculo[0]):
                 print("¡Choque!")
-                mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden)  # Pasar los argumentos correctos
+                mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden)
+                running = False
+
+        for obstaculo in obstaculos_horizontales:
+            if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
+                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
+
+            if (car_y < obstaculo[1] + obstaculo[3] and
+                car_y + grid_size > obstaculo[1] and
+                car_x < obstaculo[0] + obstaculo[2] and
+                car_x + grid_size > obstaculo[0]):
+                print("¡Choque!")
+                mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden)
                 running = False
 
         actualizar_matriz(matriz, obstaculos_verticales, 1)
@@ -842,7 +898,6 @@ def juego(user_id):
                     if result:
                         tecla_ganadora = result[0]
                         mover_carro(tecla_ganadora)
-                        tecla_ganadora_orden += 1  # Aumentar el contador
             except pymysql.MySQLError as e:
                 print(f"Error executing query: {e}")
 
@@ -852,7 +907,6 @@ def juego(user_id):
         pygame.display.update()
 
     connection.close()
-
 
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
