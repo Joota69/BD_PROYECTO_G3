@@ -368,12 +368,12 @@ def visualizar_juego():
     running = True
     crear_obstaculos()
 
-    manager = pygame_gui.UIManager((900, 800))
-    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((750, 10), (140, 50)),
+    manager = pygame_gui.UIManager((900, 700))
+    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((700, 10), (140, 50)),
                                                text='Regresar',
                                                manager=manager)
 
-    area_exclusion = pygame.Rect(700, 0, 200, 800)
+    area_exclusion = pygame.Rect(700, 0, 200, 700)
 
     filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
     matriz = crear_matriz(filas, columnas)
@@ -383,7 +383,7 @@ def visualizar_juego():
         screen.fill(WHITE)
         dibujar_cuadricula()  # Dibujar la cuadrícula
 
-        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
+        pygame.draw.line(screen, BLACK, (700, 0), (700, 700), 5)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -564,8 +564,8 @@ def dibujar_obstaculos():
 
 def dibujar_cuadricula():
     for x in range(0, 700, grid_size):
-        pygame.draw.line(screen, GRAY, (x, 0), (x, 800))
-    for y in range(0, 800, grid_size):
+        pygame.draw.line(screen, GRAY, (x, 0), (x, 700))
+    for y in range(0, 700, grid_size):
         pygame.draw.line(screen, GRAY, (0, y), (700, y))
 
 def mostrar_pantalla_reinicio(user_id):
@@ -599,10 +599,10 @@ def reiniciar_juego(user_id):
 
 def dibujar_botones(manager):
     botones = {
-        "A": (750, 300),
-        "W": (800, 250),
-        "S": (800, 300),
-        "D": (850, 300)
+        "A": (750, 600),
+        "W": (800, 550),
+        "S": (800, 600),
+        "D": (850, 600)
     }
     for letra, pos in botones.items():
         button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos[0], pos[1], 50, 50),
@@ -614,7 +614,7 @@ def mover_obstaculos(obstaculos, direccion):
     for obstaculo in obstaculos:
         if direccion == 'vertical':
             obstaculo[1] += grid_size
-            if obstaculo[1] >= 800:
+            if obstaculo[1] >= 700:
                 obstaculo[1] = random.randint(-20, -2) * grid_size
         elif direccion == 'horizontal':
             obstaculo[0] += grid_size
@@ -657,7 +657,7 @@ def manejar_movimiento_obstaculos(tiempo_total):
     if tiempo_total % 10 == 0:  # Ajustar la frecuencia del movimiento
         for obstaculo in obstaculos_verticales:
             obstaculo[1] += grid_size  # Mover obstáculo verticalmente en incrementos de grid_size
-            if obstaculo[1] >= 800:  # Si el obstáculo sale de la pantalla, reiniciar su posición
+            if obstaculo[1] >= 700:  # Si el obstáculo sale de la pantalla, reiniciar su posición
                 obstaculo[1] = 0
         for obstaculo in obstaculos_horizontales:
             obstaculo[0] += grid_size  # Mover obstáculo horizontalmente en incrementos de grid_size
@@ -713,21 +713,21 @@ def juego(user_id):
         print("Connection to database failed.")
         return
 
-    manager = pygame_gui.UIManager((900, 800))
+    manager = pygame_gui.UIManager((900, 700))
     dibujar_botones(manager)
 
-    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((750, 10), (140, 50)),
+    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((700, 10), (140, 50)),
                                                text='Regresar',
                                                manager=manager)
 
     area_botones = [
-        pygame.Rect(750, 300, 50, 50),
-        pygame.Rect(800, 250, 50, 50),
-        pygame.Rect(800, 300, 50, 50),
+        pygame.Rect(700, 300, 50, 50),
+        pygame.Rect(700, 250, 50, 50),
+        pygame.Rect(700, 300, 50, 50),
         pygame.Rect(850, 300, 50, 50)
     ]
 
-    area_exclusion = pygame.Rect(700, 0, 200, 800)
+    area_exclusion = pygame.Rect(700, 0, 200, 700)
 
     filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
     matriz = crear_matriz(filas, columnas)
@@ -737,7 +737,7 @@ def juego(user_id):
         screen.fill(WHITE)
         dibujar_cuadricula()  # Dibujar la cuadrícula
 
-        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
+        pygame.draw.line(screen, BLACK, (700, 0), (700, 900), 5)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -833,7 +833,7 @@ RED = (255, 0, 0)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 
-grid_size = 80
+grid_size = 100
 car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
 car_width = grid_size 
@@ -845,7 +845,7 @@ obstaculos_horizontales = []
 
 clock = pygame.time.Clock()
 
-screen = pygame.display.set_mode((900, 800))
+screen = pygame.display.set_mode((900, 700))
 pygame.display.set_caption("PROYECTO")
 
 start_game()
