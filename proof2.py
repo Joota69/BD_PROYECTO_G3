@@ -416,9 +416,109 @@ def start_game():
                 tecla_ganadora_orden = 1  # O algún valor válido
             juego(user_id, id_jugador, tecla_ganadora_orden)  # Pasar los tres argumentos
 
-# Cambiar las dimensiones del mapa en visualizar_juego
-# Cambiar las dimensiones del mapa en visualizar_juego
 
+def visualizar_juego():
+    global car_x, car_y
+
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
+            result = cursor.fetchone()
+            if result:
+                car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
+                car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
+            else:
+                car_x = 4 * grid_size  # Valor por defecto si no hay registros
+                car_y = 4 * grid_size  # Valor por defecto si no hay registros
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+        return
+    finally:
+        connection.close()
+
+    tiempo_total = 0
+    tiempo_envio = 0
+    running = True
+    crear_obstaculos()
+
+    manager = pygame_gui.UIManager((900, 800))
+    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((750, 10), (140, 50)),
+                                               text='Regresar',
+                                               manager=manager)
+
+    area_exclusion = pygame.Rect(700, 0, 200, 800)
+
+    filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
+    matriz = crear_matriz(filas, columnas)
+
+    while running:
+        time_delta = clock.tick(40) / 1000.0
+        screen.fill(WHITE)
+        dibujar_cuadricula()  # Dibujar la cuadrícula
+
+        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == back_button:
+                        seleccionar_modo()
+                        return
+
+            manager.process_events(event)
+
+        pygame.draw.rect(screen, RED, (car_x, car_y, car_width, car_height))
+
+        tiempo_total += 1
+
+        manejar_movimiento_obstaculos(tiempo_total)
+
+        actualizar_matriz(matriz, obstaculos_verticales, 0)
+        actualizar_matriz(matriz, obstaculos_horizontales, 0)
+
+        for obstaculo in obstaculos_verticales:
+            if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
+                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
+
+            if (car_y < obstaculo[1] + obstaculo[3] and
+                car_y + grid_size > obstaculo[1] and
+                car_x < obstaculo[0] + obstaculo[2] and
+                car_x + grid_size > obstaculo[0]):
+                print("¡Choque!")
+                mostrar_pantalla_reinicio(None)
+                running = False
+
+        for obstaculo in obstaculos_horizontales:
+            if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
+                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
+
+            if (car_y < obstaculo[1] + obstaculo[3] and
+                car_y + grid_size > obstaculo[1] and
+                car_x < obstaculo[0] + obstaculo[2] and
+                car_x + grid_size > obstaculo[0]):
+                print("¡Choque!")
+                mostrar_pantalla_reinicio(None)
+                running = False
+
+        actualizar_matriz(matriz, obstaculos_verticales, 1)
+        actualizar_matriz(matriz, obstaculos_horizontales, 1)
+
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+
+        pygame.display.update()
+    
+    connection.close()
+
+# Cambiar las dimensiones del mapa en visualizar_juego
+# Cambiar las dimensiones del mapa en visualizar_juego
 def guardar_obstaculos_db():
     connection = conectar_db()
     if connection is None:
