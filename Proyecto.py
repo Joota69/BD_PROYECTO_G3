@@ -655,11 +655,33 @@ def mover_carro(letra):
 
 
 
-def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
+def mostrar_pantalla_reinicio(user_id):
     global votaciones
     # Registrar la partida en la base de datos
+    
+    # Nueva conexión para ejecutar tiempofinal()
+    connection = conectar_db()
+    if connection:
+        try:
+            print("Enviando tiempo final a la base de datos")
+            with connection.cursor() as cursor:
+                cursor.execute("CALL tiempofinal() ")  # Llamar al procedimiento almacenado
+                connection.commit()  # Asegurarse de que los cambios se guarden
+                
+                cursor.execute("CALL SPtiempo_total()")
+                connection.commit()  # Confirmar cambios en la base de datos
+                
+                cursor.execute("CALL actualizarvotos(%s)", (votos_realizados,))
+                connection.commit()
+                
+                cursor.execute("CALL operacionpuntuacion()")
+                connection.commit()
+                   
+        except pymysql.MySQLError as e:
+            print(f"Error executing query: {e}")
+        finally:
+            connection.close()
     registrar_partida()  
-
     resetear_posiciones()
 
     screen.fill(WHITE)
@@ -681,6 +703,9 @@ def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
                 if 120 <= mouse_x <= 280 and 300 <= mouse_y <= 355:
                     esperando = False
                     reiniciar_juego(user_id)
+    resetear_posiciones()
+    
+    
 
 def resetear_posiciones():
     connection = conectar_db()
@@ -742,6 +767,7 @@ def reiniciar_juego(user_id):
     
     # Llama a juego con los tres argumentos correctos
     juego(user_id, id_jugador, tecla_ganadora_orden)
+    
 
 def dibujar_botones(manager):
     botones = {
@@ -754,8 +780,6 @@ def dibujar_botones(manager):
         button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(pos[0], pos[1], 50, 50),
                                               text=letra,
                                               manager=manager)
-
-
 
 
 
@@ -774,15 +798,20 @@ def manejar_movimiento_obstaculos(tiempo_total):
 
 def mover_carro(letra):
     print(f"Moviendo el carro con la tecla: {letra}")
-    global car_x, car_y
+    global car_x, car_y, votos_realizados
     if letra == "A" and car_x > 0:
         car_x -= grid_size
+        votos_realizados += 1
     elif letra == "D" and car_x < 660:
         car_x += grid_size
+        votos_realizados += 1
     elif letra == "W" and car_y > 0:
         car_y -= grid_size
+        votos_realizados += 1
     elif letra == "S" and car_y < 700:
         car_y += grid_size
+        votos_realizados += 1
+    
 
 def dibujar_cuadricula():
     for x in range(0, 700, grid_size):
@@ -792,6 +821,20 @@ def dibujar_cuadricula():
 
 def juego(user_id, id_jugador, tecla_ganadora_orden):
     global car_x, car_y
+    # Nueva conexión para ejecutar tiempoinicial()
+    connection = conectar_db()
+    if connection:
+        try:
+            print("Enviando tiempo inicial a la base de datos")
+            with connection.cursor() as cursor:
+                cursor.execute("CALL tiempoinicial() ")  # Llamar al procedimiento almacenado
+                
+                connection.commit()  # Asegurarse de que los cambios se guarden
+        except pymysql.MySQLError as e:
+            print(f"Error executing query: {e}")
+        finally:
+            connection.close()
+
 
     connection = conectar_db()
     if connection is None:
@@ -821,7 +864,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
     # Para recopilar votos
     votos = []  # Lista para almacenar los votos
-    tiempo_votacion = 20  # Duración de la votación en segundos
+    tiempo_votacion =6  # Duración de la votación en segundos
     tiempo_inicio_votacion = pygame.time.get_ticks()  # Tiempo de inicio de la votación
 
     manager = pygame_gui.UIManager((900, 800))
@@ -884,7 +927,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                 car_x < obstaculo[0] + obstaculo[2] and
                 car_x + grid_size > obstaculo[0]):
                 print("¡Choque!")
-                mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden)
+                mostrar_pantalla_reinicio(user_id)
                 running = False
 
         for obstaculo in obstaculos_horizontales:
@@ -936,7 +979,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             tiempo_inicio_votacion = pygame.time.get_ticks()  # Reiniciar el tiempo de votación
 
         # Enviar posición del carro a la base de datos cada 4 segundos
-        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
+        if tiempo_envio >= 5:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
@@ -949,6 +992,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
 # Definiciones de variables y funciones auxiliares
 votaciones = 0
+votos_realizados = 0
 obstaculos_verticales = []
 obstaculos_horizontales = []
 clock = pygame.time.Clock()
