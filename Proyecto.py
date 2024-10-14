@@ -896,7 +896,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
+            #acumular los votos en la base de datos
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
@@ -945,7 +945,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        # Verificar si han pasado 20 segundos para enviar los votos
+        # Verificar si han pasado 20 segundos para enviar los votos a la base de datos
         if (pygame.time.get_ticks() - tiempo_inicio_votacion) >= (tiempo_votacion * 1000):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
