@@ -756,43 +756,7 @@ def dibujar_botones(manager):
                                               manager=manager)
 
 
-def mover_obstaculos(obstaculos, direccion):
-    for obstaculo in obstaculos:
-        if direccion == 'vertical':
-            obstaculo[1] += grid_size
-            if obstaculo[1] >= 800:
-                obstaculo[1] = random.randint(-20, -2) * grid_size
-        elif direccion == 'horizontal':
-            obstaculo[0] += grid_size
-            if obstaculo[0] >= 700:
-                obstaculo[0] = random.randint(-20, -2) * grid_size
 
-def actualizar_posicion_jugador(user_id, x, y):
-    print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"""
-                INSERT INTO Jugador (IdJugador, x, y) 
-                VALUES ({user_id}, {x}, {y})
-                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
-            """)
-            connection.commit()
-            print("Inserción/Actualización exitosa")
-    except pymysql.MySQLError as e:
-        print(f"Error executing query: {e}")
-    finally:
-        connection.close()
-
-def imprimir_posicion_carro(user_id):
-    x_cuadricula = (car_x // grid_size) + 1
-    y_cuadricula = (car_y // grid_size) + 1
-    print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
-    actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
 
 
 def manejar_movimiento_obstaculos(tiempo_total):
@@ -809,6 +773,7 @@ def manejar_movimiento_obstaculos(tiempo_total):
 
 
 def mover_carro(letra):
+    print(f"Moviendo el carro con la tecla: {letra}")
     global car_x, car_y
     if letra == "A" and car_x > 0:
         car_x -= grid_size
@@ -942,6 +907,27 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
                 registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
+
+                # Nueva conexión para ejecutar ObtenerTeclaGanadora()
+                connection = conectar_db()
+                if connection:
+                    try:
+                        with connection.cursor() as cursor:
+                            cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                            connection.commit()  # Asegurarse de que los cambios se guarden
+
+                            cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+                            result = cursor.fetchone()
+                            if result:
+                                tecla_ganadora = result[0]
+                                print(f'Tecla ganadora es:{tecla_ganadora}')
+                                mover_carro(tecla_ganadora)
+                            else:
+                                print("No se encontró ninguna tecla ganadora.")
+                    except pymysql.MySQLError as e:
+                        print(f"Error executing query: {e}")
+                    finally:
+                        connection.close()
             else:
                 print("No se registraron votos.")
 
@@ -950,23 +936,10 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             tiempo_inicio_votacion = pygame.time.get_ticks()  # Reiniciar el tiempo de votación
 
         # Enviar posición del carro a la base de datos cada 4 segundos
-        if tiempo_envio >= 20:  # Verificar si han pasado 4 segundos
+        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
-
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
-                    connection.commit()  # Asegurarse de que los cambios se guarden
-
-                    cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-                    result = cursor.fetchone()
-                    if result:
-                        tecla_ganadora = result[0]
-                        mover_carro(tecla_ganadora)
-            except pymysql.MySQLError as e:
-                print(f"Error executing query: {e}")
 
         manager.update(time_delta)
         manager.draw_ui(screen)
