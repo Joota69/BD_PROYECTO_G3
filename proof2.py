@@ -2,9 +2,23 @@ import pygame
 import random
 import pymysql
 import pygame_gui
-
+import time
 
 pygame.init()
+
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+
+grid_size = 80
+car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
+car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
+car_width = grid_size 
+car_height = grid_size
+velocidad = 40
+
+
 
 def conectar_db():
     try:
@@ -20,7 +34,9 @@ def conectar_db():
         print(f"Error connecting to database: {e}")
         return None
    #########################################################LOGIN#####################################################
-def registrar_evento(tecla, user_id):
+
+
+#def registrar_evento(tecla, user_id):
     connection = conectar_db()
     if connection is None:
         print("Connection to database failed.")
@@ -34,6 +50,52 @@ def registrar_evento(tecla, user_id):
         print(f"Error executing query: {e}")
     finally:
         connection.close()
+        
+def registrar_eventos(eventos):
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            sql = "INSERT INTO Evento (IdUsuario, Tecla) VALUES (%s, %s)"
+            cursor.executemany(sql, eventos)  # Inserta múltiples filas
+            connection.commit()
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
+
+def votar():
+    eventos = []
+    print("Comienza la votación. Tienes 20 segundos para votar.")
+    
+    # Tiempo de votación
+    start_time = time.time()
+    
+    while True:
+        # Comprobar si han pasado 20 segundos
+        if time.time() - start_time >= 20:
+            print("Tiempo de votación terminado.")
+            break
+        
+        # Recibir entradas de los usuarios
+        tecla = input("Ingrese tecla (o 'salir' para terminar la votación): ")
+        if tecla == 'salir':
+            break
+        user_id = input("Ingrese ID de usuario: ")
+        
+        # Acumula los votos en la lista
+        eventos.append((user_id, tecla))
+
+    # Registrar todos los eventos en la base de datos al finalizar
+    if eventos:
+        registrar_eventos(eventos)
+    else:
+        print("No se registraron votos.")
+# Llama a la función para empezar a recibir votos
+
 
 def crear_cuenta():
     connection = conectar_db()
@@ -323,6 +385,9 @@ def seleccionar_modo():
                     running = False
 
     return modo
+
+
+
 ####################################################Juego#######################################################################
 def start_game():
     global votaciones
@@ -454,22 +519,6 @@ def visualizar_juego():
     
     connection.close()
 
-'''def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
-    obstaculos_horizontales = []
-    
-    for i in range(6):
-        obstaculo_x_1 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_y_1 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_velocidad_1 = grid_size / 10  # Reducir la velocidad
-        obstaculos_verticales.append([obstaculo_x_1, obstaculo_y_1, grid_size, grid_size, obstaculo_velocidad_1, random.randint(0, 300)])
-
-    for i in range(6):
-        obstaculo_x_2 = random.randint(0, 16) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_y_2 = random.randint(0, 19) * grid_size  # Ajustar el rango para cubrir toda el área de juego
-        obstaculo_velocidad_2 = grid_size / 10  # Reducir la velocidad
-        obstaculos_horizontales.append([obstaculo_x_2, obstaculo_y_2, grid_size, grid_size, obstaculo_velocidad_2, random.randint(0, 300)])'''
 
 def guardar_obstaculos_db():
     connection = conectar_db()
@@ -516,40 +565,6 @@ def leer_obstaculos_db():
     finally:
         connection.close()
 
-'''def crear_obstaculos():
-    global obstaculos_verticales, obstaculos_horizontales
-    obstaculos_verticales = []
-    obstaculos_horizontales = []
-
-    # Definir posiciones fijas para los obstáculos verticales
-    posiciones_verticales = [
-        (1, 1),  # (x, y) en términos de celdas de la cuadrícula
-        (3, 2),
-        (5, 4),
-        (7, 6)
-    ]
-
-    # Definir posiciones fijas para los obstáculos horizontales
-    posiciones_horizontales = [
-        (2, 1),
-        (4, 3),
-        (6, 5),
-        (8, 7)
-    ]
-
-    # Crear obstáculos verticales en posiciones fijas
-    for pos in posiciones_verticales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_verticales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])
-
-    # Crear obstáculos horizontales en posiciones fijas
-    for pos in posiciones_horizontales:
-        obstaculo_x = pos[0] * grid_size
-        obstaculo_y = pos[1] * grid_size
-        obstaculo_velocidad = grid_size / 10  # Velocidad fija
-        obstaculos_horizontales.append([obstaculo_x, obstaculo_y, grid_size, grid_size, obstaculo_velocidad, 0])'''
 
 def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
@@ -722,10 +737,6 @@ def imprimir_posicion_carro(user_id):
     print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
     actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
 
-'''def manejar_movimiento_obstaculos(tiempo_total):
-    if tiempo_total % 10 == 0:  # Mover los obstáculos cada 10 ticks
-        mover_obstaculos(obstaculos_verticales, 'vertical')
-        mover_obstaculos(obstaculos_horizontales, 'horizontal')'''
 
 def manejar_movimiento_obstaculos(tiempo_total):
     if tiempo_total % 10 == 0:  # Ajustar la frecuencia del movimiento
@@ -763,7 +774,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
+            cursor.execute(f"SELECT x, y FROM Jugador LIMIT 1")
             result = cursor.fetchone()
             if result:
                 car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
@@ -781,11 +792,11 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
     tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
     running = True
     crear_obstaculos()
-    
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
+
+    # Para recopilar votos
+    votos = []  # Lista para almacenar los votos
+    tiempo_votacion = 20  # Duración de la votación en segundos
+    tiempo_inicio_votacion = pygame.time.get_ticks()  # Tiempo de inicio de la votación
 
     manager = pygame_gui.UIManager((900, 800))
     dibujar_botones(manager)
@@ -803,7 +814,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
     area_exclusion = pygame.Rect(700, 0, 200, 800)
 
-    filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
+    filas, columnas = 10, 8  # (debo cambiarlo)
     matriz = crear_matriz(filas, columnas)
 
     while running:
@@ -816,27 +827,15 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            """ if event.type == pygame.KEYDOWN:  #en caso de emergencias papu
-                if event.key == pygame.K_a and car_x > 0:
-                    car_x -= grid_size
-                    registrar_evento('A', user_id)
-                if event.key == pygame.K_d and car_x < 660:
-                    car_x += grid_size
-                    registrar_evento('D', user_id)
-                if event.key == pygame.K_w and car_y > 0:
-                    car_y -= grid_size
-                    registrar_evento('W', user_id)
-                if event.key == pygame.K_s and car_y < 700:
-                    car_y += grid_size
-                    registrar_evento('S', user_id)"""# para mover con las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
                         seleccionar_modo()
                         return
-                        #mover_carro(event.ui_element.text)
-                    registrar_evento(event.ui_element.text, user_id)
+                    # Aquí se registra el voto
+                    votos.append(event.ui_element.text)  # Acumular el voto en la lista
+                    print(f"Voto registrado: {event.ui_element.text}")  # Imprimir voto en la consola
 
             manager.process_events(event)
 
@@ -877,7 +876,20 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         actualizar_matriz(matriz, obstaculos_verticales, 1)
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
-        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
+        # Verificar si han pasado 20 segundos para enviar los votos
+        if (pygame.time.get_ticks() - tiempo_inicio_votacion) >= (tiempo_votacion * 1000):
+            print("Tiempo de votación terminado. Enviando votos a la base de datos.")
+            if votos:  # Solo registrar si hay votos
+                registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
+            else:
+                print("No se registraron votos.")
+
+            # Reiniciar la votación
+            votos.clear()  # Limpiar la lista de votos
+            tiempo_inicio_votacion = pygame.time.get_ticks()  # Reiniciar el tiempo de votación
+
+        # Enviar posición del carro a la base de datos cada 4 segundos
+        if tiempo_envio >= 20:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
@@ -900,29 +912,15 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
         pygame.display.update()
 
-    connection.close()
-
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-BLACK = (0, 0, 0)
-GRAY = (200, 200, 200)
-
-grid_size = 80
-car_x = 4 * grid_size  # Ajustar la posición inicial del jugador
-car_y = 4 * grid_size  # Ajustar la posición inicial del jugador
-car_width = grid_size 
-car_height = grid_size
-velocidad = 40
-
+# Definiciones de variables y funciones auxiliares
 votaciones = 0
-
+votos_jugador = {}
 obstaculos_verticales = []
 obstaculos_horizontales = []
-
 clock = pygame.time.Clock()
-
 screen = pygame.display.set_mode((900, 800))
 pygame.display.set_caption("PROYECTO")
 
+# Inicia el juego
 start_game()
 pygame.quit()
