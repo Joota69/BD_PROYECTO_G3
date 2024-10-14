@@ -416,109 +416,8 @@ def start_game():
                 tecla_ganadora_orden = 1  # O algún valor válido
             juego(user_id, id_jugador, tecla_ganadora_orden)  # Pasar los tres argumentos
 
-
 # Cambiar las dimensiones del mapa en visualizar_juego
 # Cambiar las dimensiones del mapa en visualizar_juego
-def visualizar_juego():
-    global car_x, car_y
-
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
-            result = cursor.fetchone()
-            if result:
-                car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
-                car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
-            else:
-                car_x = 4 * grid_size  # Valor por defecto si no hay registros
-                car_y = 4 * grid_size  # Valor por defecto si no hay registros
-    except pymysql.MySQLError as e:
-        print(f"Error executing query: {e}")
-        return
-    finally:
-        connection.close()
-
-    tiempo_total = 0
-    tiempo_envio = 0
-    running = True
-    crear_obstaculos()
-
-    manager = pygame_gui.UIManager((900, 800))
-    back_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((750, 10), (140, 50)),
-                                               text='Regresar',
-                                               manager=manager)
-
-    area_exclusion = pygame.Rect(700, 0, 200, 800)
-
-    filas, columnas = 10, 8  # Ajustar según el tamaño del mapa
-    matriz = crear_matriz(filas, columnas)
-
-    while running:
-        time_delta = clock.tick(40) / 1000.0
-        screen.fill(WHITE)
-        dibujar_cuadricula()  # Dibujar la cuadrícula
-
-        pygame.draw.line(screen, BLACK, (700, 0), (700, 800), 5)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == back_button:
-                        seleccionar_modo()
-                        return
-
-            manager.process_events(event)
-
-        pygame.draw.rect(screen, RED, (car_x, car_y, car_width, car_height))
-
-        tiempo_total += 1
-
-        manejar_movimiento_obstaculos(tiempo_total)
-
-        actualizar_matriz(matriz, obstaculos_verticales, 0)
-        actualizar_matriz(matriz, obstaculos_horizontales, 0)
-
-        for obstaculo in obstaculos_verticales:
-            if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-            if (car_y < obstaculo[1] + obstaculo[3] and
-                car_y + grid_size > obstaculo[1] and
-                car_x < obstaculo[0] + obstaculo[2] and
-                car_x + grid_size > obstaculo[0]):
-                print("¡Choque!")
-                mostrar_pantalla_reinicio(None)
-                running = False
-
-        for obstaculo in obstaculos_horizontales:
-            if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
-                pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
-
-            if (car_y < obstaculo[1] + obstaculo[3] and
-                car_y + grid_size > obstaculo[1] and
-                car_x < obstaculo[0] + obstaculo[2] and
-                car_x + grid_size > obstaculo[0]):
-                print("¡Choque!")
-                mostrar_pantalla_reinicio(None)
-                running = False
-
-        actualizar_matriz(matriz, obstaculos_verticales, 1)
-        actualizar_matriz(matriz, obstaculos_horizontales, 1)
-
-        manager.update(time_delta)
-        manager.draw_ui(screen)
-
-        pygame.display.update()
-    
-    connection.close()
-
 
 def guardar_obstaculos_db():
     connection = conectar_db()
@@ -565,7 +464,6 @@ def leer_obstaculos_db():
     finally:
         connection.close()
 
-
 def crear_obstaculos():
     global obstaculos_verticales, obstaculos_horizontales
     leer_obstaculos_db()
@@ -592,11 +490,97 @@ def dibujar_obstaculos():
     for obstaculo in obstaculos_horizontales:
         pygame.draw.rect(screen, RED, obstaculo)
 
-def dibujar_cuadricula():
-    for x in range(0, 700, grid_size):
-        pygame.draw.line(screen, GRAY, (x, 0), (x, 800))
-    for y in range(0, 800, grid_size):
-        pygame.draw.line(screen, GRAY, (0, y), (700, y))
+def mover_obstaculos(obstaculos, direccion):
+    for obstaculo in obstaculos:
+        if direccion == 'vertical':
+            obstaculo[1] += grid_size
+            if obstaculo[1] >= 800:
+                obstaculo[1] = random.randint(-20, -2) * grid_size
+        elif direccion == 'horizontal':
+            obstaculo[0] += grid_size
+            if obstaculo[0] >= 700:
+                obstaculo[0] = random.randint(-20, -2) * grid_size
+
+def manejar_movimiento_obstaculos(tiempo_total):
+    if tiempo_total % 10 == 0:  # Ajustar la frecuencia del movimiento
+        for obstaculo in obstaculos_verticales:
+            obstaculo[1] += grid_size  # Mover obstáculo verticalmente en incrementos de grid_size
+            if obstaculo[1] >= 800:  # Si el obstáculo sale de la pantalla, reiniciar su posición
+                obstaculo[1] = 0
+        for obstaculo in obstaculos_horizontales:
+            obstaculo[0] += grid_size  # Mover obstáculo horizontalmente en incrementos de grid_size
+            if obstaculo[0] >= 700:  # Si el obstáculo sale de la pantalla, reiniciar su posición
+                obstaculo[0] = 0
+        guardar_obstaculos_db()  # Guardar las posiciones actualizadas en la base de datos
+
+
+
+def actualizar_posicion_jugador(user_id, x, y):
+    print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"""
+                INSERT INTO Jugador (IdJugador, x, y) 
+                VALUES ({user_id}, {x}, {y})
+                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
+            """)
+            connection.commit()
+            print("Inserción/Actualización exitosa")
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
+
+def imprimir_posicion_carro(user_id):
+    x_cuadricula = (car_x // grid_size) + 1
+    y_cuadricula = (car_y // grid_size) + 1
+    print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
+    actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
+
+def mover_carro(letra):
+    global car_x, car_y
+    if letra == "A" and car_x > 0:
+        car_x -= grid_size
+    elif letra == "D" and car_x < 660:
+        car_x += grid_size
+    elif letra == "W" and car_y > 0:
+        car_y -= grid_size
+    elif letra == "S" and car_y < 700:
+        car_y += grid_size
+
+
+
+def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
+    global votaciones
+    # Registrar la partida en la base de datos
+    registrar_partida()  
+
+    resetear_posiciones()
+
+    screen.fill(WHITE)
+    fuente = pygame.font.SysFont(None, 55)
+    mensaje = fuente.render("¡Perdiste!", True, BLACK)
+    boton = fuente.render("Reiniciar", True, BLACK)
+    screen.blit(mensaje, (120, 200))
+    screen.blit(boton, (120, 300))
+    pygame.display.update()
+
+    esperando = True
+    while esperando:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if 120 <= mouse_x <= 280 and 300 <= mouse_y <= 355:
+                    esperando = False
+                    reiniciar_juego(user_id)
 
 def resetear_posiciones():
     connection = conectar_db()
@@ -629,34 +613,6 @@ def resetear_posiciones():
     finally:
         connection.close()
 
-def mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden):
-    global votaciones
-    # Registrar la partida en la base de datos
-    registrar_partida()  
-
-    resetear_posiciones()
-
-    screen.fill(WHITE)
-    fuente = pygame.font.SysFont(None, 55)
-    mensaje = fuente.render("¡Perdiste!", True, BLACK)
-    boton = fuente.render("Reiniciar", True, BLACK)
-    screen.blit(mensaje, (120, 200))
-    screen.blit(boton, (120, 300))
-    pygame.display.update()
-
-    esperando = True
-    while esperando:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                if 120 <= mouse_x <= 280 and 300 <= mouse_y <= 355:
-                    esperando = False
-                    reiniciar_juego(user_id)
-
-
 def registrar_partida():
     connection = conectar_db()
     if connection is None:
@@ -671,6 +627,7 @@ def registrar_partida():
         print(f"Error ejecutando la consulta: {e}")
     finally:
         connection.close()
+
 
 
 def reiniciar_juego(user_id):
@@ -699,59 +656,8 @@ def dibujar_botones(manager):
                                               manager=manager)
 
 
-def mover_obstaculos(obstaculos, direccion):
-    for obstaculo in obstaculos:
-        if direccion == 'vertical':
-            obstaculo[1] += grid_size
-            if obstaculo[1] >= 800:
-                obstaculo[1] = random.randint(-20, -2) * grid_size
-        elif direccion == 'horizontal':
-            obstaculo[0] += grid_size
-            if obstaculo[0] >= 700:
-                obstaculo[0] = random.randint(-20, -2) * grid_size
-
-def actualizar_posicion_jugador(user_id, x, y):
-    print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"""
-                INSERT INTO Jugador (IdJugador, x, y) 
-                VALUES ({user_id}, {x}, {y})
-                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
-            """)
-            connection.commit()
-            print("Inserción/Actualización exitosa")
-    except pymysql.MySQLError as e:
-        print(f"Error executing query: {e}")
-    finally:
-        connection.close()
-
-def imprimir_posicion_carro(user_id):
-    x_cuadricula = (car_x // grid_size) + 1
-    y_cuadricula = (car_y // grid_size) + 1
-    print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
-    actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
 
 
-def manejar_movimiento_obstaculos(tiempo_total):
-    if tiempo_total % 10 == 0:  # Ajustar la frecuencia del movimiento
-        for obstaculo in obstaculos_verticales:
-            obstaculo[1] += grid_size  # Mover obstáculo verticalmente en incrementos de grid_size
-            if obstaculo[1] >= 800:  # Si el obstáculo sale de la pantalla, reiniciar su posición
-                obstaculo[1] = 0
-        for obstaculo in obstaculos_horizontales:
-            obstaculo[0] += grid_size  # Mover obstáculo horizontalmente en incrementos de grid_size
-            if obstaculo[0] >= 700:  # Si el obstáculo sale de la pantalla, reiniciar su posición
-                obstaculo[0] = 0
-        guardar_obstaculos_db()  # Guardar las posiciones actualizadas en la base de datos
-
-
-def mover_carro(letra):
     global car_x, car_y
     if letra == "A" and car_x > 0:
         car_x -= grid_size
@@ -762,6 +668,11 @@ def mover_carro(letra):
     elif letra == "S" and car_y < 700:
         car_y += grid_size
 
+def dibujar_cuadricula():
+    for x in range(0, 700, grid_size):
+        pygame.draw.line(screen, GRAY, (x, 0), (x, 800))
+    for y in range(0, 800, grid_size):
+        pygame.draw.line(screen, GRAY, (0, y), (700, y))
 
 # Cambiar las dimensiones del mapa en juego
 def juego(user_id, id_jugador, tecla_ganadora_orden):
@@ -896,16 +807,21 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
             try:
                 with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
-                    connection.commit()  # Asegurarse de que los cambios se guarden
-
+                    print("Llamando al procedimiento ObtenerTeclaGanadora...")
+                    cursor.execute("CALL ObtenerTeclaGanadora()")
+                    connection.commit()
+                    
+                    print("Consultando la tecla ganadora...")
                     cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
                     result = cursor.fetchone()
                     if result:
                         tecla_ganadora = result[0]
                         mover_carro(tecla_ganadora)
+                        print(f"Tecla ganadora obtenida: {tecla_ganadora}")
+                    else:
+                        print("No se encontró ninguna tecla ganadora.")
             except pymysql.MySQLError as e:
-                print(f"Error executing query: {e}")
+                print(f"Error ejecutando la consulta: {e}")
 
         manager.update(time_delta)
         manager.draw_ui(screen)
@@ -914,7 +830,6 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
 # Definiciones de variables y funciones auxiliares
 votaciones = 0
-votos_jugador = {}
 obstaculos_verticales = []
 obstaculos_horizontales = []
 clock = pygame.time.Clock()
