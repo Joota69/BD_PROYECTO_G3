@@ -730,6 +730,7 @@ def manejar_movimiento_obstaculos(tiempo_total):
 
 def mover_carro(letra):
     global car_x, car_y
+    print(f"Moviendo el carro con la tecla: {letra}")
     if letra == "A" and car_x > 0:
         car_x -= grid_size
     elif letra == "D" and car_x < 660:

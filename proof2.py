@@ -752,6 +752,7 @@ def manejar_movimiento_obstaculos(tiempo_total):
 
 
 def mover_carro(letra):
+    print(f"Moviendo el carro con la tecla: {letra}")
     global car_x, car_y
     if letra == "A" and car_x > 0:
         car_x -= grid_size
@@ -763,7 +764,6 @@ def mover_carro(letra):
         car_y += grid_size
 
 
-# Cambiar las dimensiones del mapa en juego
 def juego(user_id, id_jugador, tecla_ganadora_orden):
     global car_x, car_y
 
@@ -786,7 +786,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         print(f"Error executing query: {e}")
         return
     finally:
-        connection.close()
+        connection.close()  # Cerramos la conexión después de cargar la posición del jugador
 
     tiempo_total = 0
     tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
@@ -881,6 +881,27 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
                 registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
+
+                # Nueva conexión para ejecutar ObtenerTeclaGanadora()
+                connection = conectar_db()
+                if connection:
+                    try:
+                        with connection.cursor() as cursor:
+                            cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                            connection.commit()  # Asegurarse de que los cambios se guarden
+
+                            cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+                            result = cursor.fetchone()
+                            if result:
+                                tecla_ganadora = result[0]
+                                print(f'Tecla ganadora es:{tecla_ganadora}')
+                                mover_carro(tecla_ganadora)
+                            else:
+                                print("No se encontró ninguna tecla ganadora.")
+                    except pymysql.MySQLError as e:
+                        print(f"Error executing query: {e}")
+                    finally:
+                        connection.close()
             else:
                 print("No se registraron votos.")
 
@@ -889,28 +910,16 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             tiempo_inicio_votacion = pygame.time.get_ticks()  # Reiniciar el tiempo de votación
 
         # Enviar posición del carro a la base de datos cada 4 segundos
-        if tiempo_envio >= 20:  # Verificar si han pasado 4 segundos
+        if tiempo_envio >= 4:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
-
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
-                    connection.commit()  # Asegurarse de que los cambios se guarden
-
-                    cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-                    result = cursor.fetchone()
-                    if result:
-                        tecla_ganadora = result[0]
-                        mover_carro(tecla_ganadora)
-            except pymysql.MySQLError as e:
-                print(f"Error executing query: {e}")
 
         manager.update(time_delta)
         manager.draw_ui(screen)
 
         pygame.display.update()
+
 
 # Definiciones de variables y funciones auxiliares
 votaciones = 0
