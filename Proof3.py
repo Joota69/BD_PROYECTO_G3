@@ -630,9 +630,26 @@ def actualizar_posicion_jugador(user_id, x, y):
                 ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
             """)
             connection.commit()
-            print("Inserción/Actualización exitosa")
+            print("Posición actualizada correctamente para el jugador", user_id)
     except pymysql.MySQLError as e:
-        print(f"Error executing query: {e}")
+        print(f"Error ejecutando la consulta: {e}")
+    finally:
+        connection.close()
+
+def obtener_posiciones_jugadores():
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return []
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT IdJugador, x, y FROM Jugador")
+            jugadores = cursor.fetchall()
+            return jugadores
+    except pymysql.MySQLError as e:
+        print(f"Error obteniendo posiciones: {e}")
+        return []
     finally:
         connection.close()
 
@@ -861,7 +878,14 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
     tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
     running = True
     crear_obstaculos()
+    jugadores = obtener_posiciones_jugadores()
 
+    # Dibujar a todos los jugadores
+    for jugador in jugadores:
+        jugador_id, x, y = jugador
+        jugador_x = (x - 1) * grid_size
+        jugador_y = (y - 1) * grid_size
+        pygame.draw.rect(screen, RED, (jugador_x, jugador_y, grid_size, grid_size))
     # Para recopilar votos
     votos = []  # Lista para almacenar los votos
     tiempo_votacion =6  # Duración de la votación en segundos
