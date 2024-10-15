@@ -683,6 +683,7 @@ def mover_obstaculos(obstaculos, direccion):
             if obstaculo[0] >= 700:
                 obstaculo[0] = random.randint(-20, -2) * grid_size
 
+
 def actualizar_posicion_jugador(user_id, x, y):
     print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
     connection = conectar_db()
@@ -692,18 +693,31 @@ def actualizar_posicion_jugador(user_id, x, y):
 
     try:
         with connection.cursor() as cursor:
-            # Realiza un UPDATE directamente
-            cursor.execute(f"""
-                UPDATE Jugador 
-                SET x = {x}, y = {y} 
-                WHERE IdJugador = {user_id}
-            """)
+            # Verificar si el jugador ya existe en la tabla
+            cursor.execute(f"SELECT COUNT(*) FROM Jugador WHERE IdJugador = {user_id}")
+            result = cursor.fetchone()
+
+            if result[0] > 0:
+                # Si el jugador ya existe, actualizamos su posición
+                cursor.execute(f"""
+                    UPDATE Jugador 
+                    SET x = {x}, y = {y} 
+                    WHERE IdJugador = {user_id}
+                """)
+            else:
+                # Si no existe, insertamos el nuevo jugador
+                cursor.execute(f"""
+                    INSERT INTO Jugador (IdJugador, x, y) 
+                    VALUES ({user_id}, {x}, {y})
+                """)
+            
             connection.commit()
             print("Posición del jugador actualizada correctamente.")
     except pymysql.MySQLError as e:
         print(f"Error ejecutando la consulta: {e}")
     finally:
         connection.close()
+
 
 
 def imprimir_posicion_carro(user_id):
@@ -754,16 +768,19 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
     try:
         with connection.cursor() as cursor:
-            # Obtener la posición del jugador con el ID dado (asumiendo que siempre hay una fila de jugador)
+            # Verificar si ya existe un registro para este jugador
             cursor.execute(f"SELECT x, y FROM Jugador WHERE IdJugador = {user_id}")
             result = cursor.fetchone()
             if result:
+                # Si existe el jugador, cargar su posición
                 car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
                 car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
             else:
-                # Si no se encuentra el jugador, usa una posición por defecto
-                car_x = 4 * grid_size
-                car_y = 4 * grid_size
+                # Si no existe el jugador, usar posición predeterminada
+                car_x = 4 * grid_size  # Valor por defecto si no hay registros
+                car_y = 4 * grid_size  # Valor por defecto si no hay registros
+                # Insertar el nuevo jugador con la posición predeterminada
+                actualizar_posicion_jugador(user_id, car_x // grid_size + 1, car_y // grid_size + 1)
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return
@@ -809,26 +826,12 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            """ if event.type == pygame.KEYDOWN:  #en caso de emergencias papu
-                if event.key == pygame.K_a and car_x > 0:
-                    car_x -= grid_size
-                    registrar_evento('A', user_id)
-                if event.key == pygame.K_d and car_x < 660:
-                    car_x += grid_size
-                    registrar_evento('D', user_id)
-                if event.key == pygame.K_w and car_y > 0:
-                    car_y -= grid_size
-                    registrar_evento('W', user_id)
-                if event.key == pygame.K_s and car_y < 700:
-                    car_y += grid_size
-                    registrar_evento('S', user_id)"""# para mover las teclas
 
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == back_button:
                         seleccionar_modo()
                         return
-                        #mover_carro(event.ui_element.text)
                     registrar_evento(event.ui_element.text, user_id)
 
             manager.process_events(event)
@@ -843,6 +846,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         actualizar_matriz(matriz, obstaculos_verticales, 0)
         actualizar_matriz(matriz, obstaculos_horizontales, 0)
 
+        # Verificar colisiones con los obstáculos
         for obstaculo in obstaculos_verticales:
             if not area_exclusion.colliderect(pygame.Rect(obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3])):
                 pygame.draw.rect(screen, BLACK, (obstaculo[0], obstaculo[1], obstaculo[2], obstaculo[3]))
@@ -894,6 +898,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         pygame.display.update()
 
     connection.close()
+
 
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
