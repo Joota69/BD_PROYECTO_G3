@@ -692,30 +692,19 @@ def actualizar_posicion_jugador(user_id, x, y):
 
     try:
         with connection.cursor() as cursor:
-            # Verificar si el jugador ya existe
-            cursor.execute(f"SELECT COUNT(*) FROM Jugador WHERE IdJugador = {user_id}")
-            result = cursor.fetchone()
-
-            if result[0] > 0:
-                # Si el jugador ya existe, actualizamos su posición
-                cursor.execute(f"""
-                    UPDATE Jugador 
-                    SET x = {x}, y = {y} 
-                    WHERE IdJugador = {user_id}
-                """)
-            else:
-                # Si el jugador no existe, lo insertamos
-                cursor.execute(f"""
-                    INSERT INTO Jugador (IdJugador, x, y) 
-                    VALUES ({user_id}, {x}, {y})
-                """)
-            
+            # Realiza un UPDATE directamente
+            cursor.execute(f"""
+                UPDATE Jugador 
+                SET x = {x}, y = {y} 
+                WHERE IdJugador = {user_id}
+            """)
             connection.commit()
             print("Posición del jugador actualizada correctamente.")
     except pymysql.MySQLError as e:
         print(f"Error ejecutando la consulta: {e}")
     finally:
         connection.close()
+
 
 def imprimir_posicion_carro(user_id):
     x_cuadricula = (car_x // grid_size) + 1
@@ -765,14 +754,16 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT x, y FROM Jugador Limit 1")
+            # Obtener la posición del jugador con el ID dado (asumiendo que siempre hay una fila de jugador)
+            cursor.execute(f"SELECT x, y FROM Jugador WHERE IdJugador = {user_id}")
             result = cursor.fetchone()
             if result:
                 car_x = (result[0] - 1) * grid_size  # Ajustar según la cuadrícula
                 car_y = (result[1] - 1) * grid_size  # Ajustar según la cuadrícula
             else:
-                car_x = 4 * grid_size  # Valor por defecto si no hay registros
-                car_y = 4 * grid_size  # Valor por defecto si no hay registros
+                # Si no se encuentra el jugador, usa una posición por defecto
+                car_x = 4 * grid_size
+                car_y = 4 * grid_size
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
         return
