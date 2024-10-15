@@ -593,7 +593,7 @@ def visualizar_juego():
     matriz = crear_matriz(filas, columnas)
 
     while running:
-        time_delta = clock.tick(40) / 1000.0
+        time_delta = clock.tick(60) / 1000.0
         screen.fill(WHITE)
         dibujar_cuadricula()  # Dibujar la cuadrícula
 
@@ -655,6 +655,27 @@ def visualizar_juego():
 
 # Cambiar las dimensiones del mapa en visualizar_juego
 # Cambiar las dimensiones del mapa en visualizar_juego
+'''def guardar_obstaculos_db():
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            datos_obstaculos = []
+            for i, obstaculo in enumerate(obstaculos_verticales + obstaculos_horizontales):
+                tipo = 'vertical' if obstaculo in obstaculos_verticales else 'horizontal'
+                x_celda = obstaculo[0] // grid_size
+                y_celda = obstaculo[1] // grid_size
+                datos_obstaculos.append((x_celda, y_celda, tipo, i + 1))
+                cursor.callproc('ActualizarObstaculo', (x_celda, y_celda, tipo, i + 1))
+            connection.commit()
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()'''
+
 def guardar_obstaculos_db():
     connection = conectar_db()
     if connection is None:
@@ -663,12 +684,22 @@ def guardar_obstaculos_db():
 
     try:
         with connection.cursor() as cursor:
+            # Crear una lista para almacenar los datos de los obstáculos
+            datos_obstaculos = []
             for i, obstaculo in enumerate(obstaculos_verticales + obstaculos_horizontales):
                 tipo = 'vertical' if obstaculo in obstaculos_verticales else 'horizontal'
                 x_celda = obstaculo[0] // grid_size
                 y_celda = obstaculo[1] // grid_size
-                cursor.callproc('ActualizarObstaculo', (x_celda, y_celda, tipo, i + 1))
+                # Añadir datos a la lista en lugar de llamar a la base de datos dentro del bucle
+                datos_obstaculos.append((x_celda, y_celda, tipo, i + 1))
+            
+            # Usar 'executemany' para hacer todas las actualizaciones en un solo llamado
+            # NOTA: Asegúrate que el procedimiento almacenado sea capaz de manejar este tipo de múltiples parámetros.
+            cursor.executemany('CALL ActualizarObstaculo(%s, %s, %s, %s)', datos_obstaculos)
+            
+            # Confirmar los cambios
             connection.commit()
+
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
     finally:
@@ -1005,7 +1036,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
     matriz = crear_matriz(filas, columnas)
 
     while running:
-        time_delta = clock.tick(30) / 1000.0
+        time_delta = clock.tick(10000) / 1000.0
         screen.fill(WHITE)
         dibujar_cuadricula()  # Dibujar la cuadrícula
 
@@ -1057,7 +1088,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                 car_x < obstaculo[0] + obstaculo[2] and
                 car_x + grid_size > obstaculo[0]):
                 print("¡Choque!")
-                mostrar_pantalla_reinicio(user_id, id_jugador, tecla_ganadora_orden)
+                mostrar_pantalla_reinicio(user_id)
                 running = False
 
         actualizar_matriz(matriz, obstaculos_verticales, 1)
