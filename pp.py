@@ -942,8 +942,22 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
                 registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
-            else:
-                print("No se registraron votos.")
+
+                try:
+                    with connection.cursor() as cursor:
+                        cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
+                        connection.commit()  # Asegurarse de que los cambios se guarden
+
+                        cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+                        result = cursor.fetchone()
+                        if result:
+                            tecla_ganadora = result[0]
+                            mover_carro(tecla_ganadora)
+                except pymysql.MySQLError as e:
+                    print(f"Error executing query: {e}")
+                    
+                else:
+                    print("No se registraron votos.")
 
             # Reiniciar la votación
             votos.clear()  # Limpiar la lista de votos
@@ -954,19 +968,6 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             print("Enviando posición del carro a la base de datos")
             imprimir_posicion_carro(user_id)  # Enviar la posición del carro rojo a la base de datos
             tiempo_envio = 0  # Reiniciar el temporizador
-
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
-                    connection.commit()  # Asegurarse de que los cambios se guarden
-
-                    cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-                    result = cursor.fetchone()
-                    if result:
-                        tecla_ganadora = result[0]
-                        mover_carro(tecla_ganadora)
-            except pymysql.MySQLError as e:
-                print(f"Error executing query: {e}")
 
         manager.update(time_delta)
         manager.draw_ui(screen)
