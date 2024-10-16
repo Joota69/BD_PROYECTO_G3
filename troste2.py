@@ -1056,24 +1056,25 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
             tiempo_inicio_votacion = time.time() # Reiniciar el tiempo de votacion
             start_votacion, end_votacion = get_votacion_times() # Obtener nuevo tiempo de votacion
             
-            connection = conectar_db()
-            if connection:
-                try:
-                    with connection.cursor() as cursor:
-                        cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-                        result = cursor.fetchone()
-                        if result:
-                            tecla_ganadora = result[0]
-                            print(f'Tecla ganadora es:{tecla_ganadora}')
-                            mover_carro(tecla_ganadora)
-                        else:
-                            print("No se encontró ninguna tecla ganadora.")
-                except pymysql.MySQLError as e:
-                    print(f"Error executing query: {e}")
-                finally:
-                    connection.close()
-            else:
-                print("No se registraron votos.")
+            if end_votacion==time.time():
+                connection = conectar_db()
+                if connection:
+                    try:
+                        with connection.cursor() as cursor:
+                            cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
+                            result = cursor.fetchone()
+                            if result:
+                                tecla_ganadora = result[0]
+                                print(f'Tecla ganadora es:{tecla_ganadora}')
+                                mover_carro(tecla_ganadora)
+                            else:
+                                print("No se encontró ninguna tecla ganadora.")
+                    except pymysql.MySQLError as e:
+                        print(f"Error executing query: {e}")
+                    finally:
+                        connection.close()
+                else:
+                    print("No se registraron votos.")
                 
         # Enviar posición del carro a la base de datos cada 4 segundos
         if tiempo_envio >= 5:  # Verificar si han pasado 4 segundos
