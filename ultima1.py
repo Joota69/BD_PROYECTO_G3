@@ -3,6 +3,7 @@ import random
 import pymysql
 import pygame_gui
 import time
+from datetime import datetime, timedelta
 
 pygame.init()
 
@@ -35,22 +36,26 @@ def conectar_db():
         return None
    #########################################################LOGIN#####################################################
 
-
-#def registrar_evento(tecla, user_id):
+def get_votacion_times():
     connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(f"INSERT INTO Evento (IdUsuario, Tecla) VALUES ({user_id}, '{tecla}')")
-            connection.commit()
-    except pymysql.MySQLError as e:
-        print(f"Error executing query: {e}")
-    finally:
+    if connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT start_votacion, end_votacion FROM Tiempodevotacion ORDER BY idtiempo DESC LIMIT 1;")
+        result = cursor.fetchone()
+        cursor.close()
         connection.close()
-        
+        if result:
+            start_votacion, end_votacion = result
+            return start_votacion, end_votacion
+        else:
+            print("No se encontraron tiempos de votación.")
+            return None, None
+    else:
+        print("No se pudo establecer la conexión a la base de datos.")
+        return None, None
+    
+
+
 def registrar_eventos(eventos):
     connection = conectar_db()
     if connection is None:
@@ -66,21 +71,35 @@ def registrar_eventos(eventos):
         print(f"Error executing query: {e}")
     finally:
         connection.close()
+        
 
 def votar():
     eventos = []
-    print("Comienza la votación. Tienes 20 segundos para votar.")
+    start_votacion, end_votacion = get_votacion_times()
+    if not start_votacion or not end_votacion:
+        print("No se pudo obtener los tiempos de votación.")
+        return
+    current_time = datetime.now() + timedelta(hours=5)
+    remaining_time = (end_votacion - current_time).total_seconds()
+    if remaining_time <= 0:
+            print("La votación ya ha terminado.")
+            return
+
+    print(f"Comienza la votación. Tienes {int(remaining_time)} segundos para votar.")
     
     # Tiempo de votación
     start_time = time.time()
     
     while True:
-        # Comprobar si han pasado 20 segundos
-        if time.time() - start_time >= 20:
+        time_delta = clock.tick(30) / 1000.0
+        screen.fill(WHITE)
+
+        # Verificar si el tiempo restante ha terminado
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= remaining_time:
             print("Tiempo de votación terminado.")
             break
-        
-        # Recibir entradas de los usuarios
+
         tecla = input("Ingrese tecla (o 'salir' para terminar la votación): ")
         if tecla == 'salir':
             break
@@ -94,7 +113,21 @@ def votar():
         registrar_eventos(eventos)
     else:
         print("No se registraron votos.")
-# Llama a la función para empezar a recibir votos
+
+def registrar_evento(tecla, user_id):
+    connection = conectar_db()
+    if connection is None:
+        print("Connection to database failed.")
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(f"INSERT INTO Evento (IdUsuario, Tecla) VALUES ({user_id}, '{tecla}')")
+            connection.commit()
+    except pymysql.MySQLError as e:
+        print(f"Error executing query: {e}")
+    finally:
+        connection.close()
 
 
 def crear_cuenta():
@@ -626,30 +659,13 @@ def actualizar_posicion_jugador(user_id, x, y):
         with connection.cursor() as cursor:
             cursor.execute(f"""
                 INSERT INTO Jugador ( x, y) 
-                VALUES ( {x}, {y})
+                VALUES ({x}, {y})
                 ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
             """)
             connection.commit()
-            print("Posición actualizada correctamente para el jugador", user_id)
+            print("Inserción/Actualización exitosa")
     except pymysql.MySQLError as e:
-        print(f"Error ejecutando la consulta: {e}")
-    finally:
-        connection.close()
-
-def obtener_posiciones_jugadores():
-    connection = conectar_db()
-    if connection is None:
-        print("Connection to database failed.")
-        return []
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT IdJugador, x, y FROM Jugador")
-            jugadores = cursor.fetchall()
-            return jugadores
-    except pymysql.MySQLError as e:
-        print(f"Error obteniendo posiciones: {e}")
-        return []
+        print(f"Error executing query: {e}")
     finally:
         connection.close()
 
@@ -878,17 +894,12 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
     tiempo_envio = 0  # Variable para rastrear el tiempo transcurrido para el envío
     running = True
     crear_obstaculos()
-    jugadores = obtener_posiciones_jugadores()
 
-    # Dibujar a todos los jugadores
-    for jugador in jugadores:
-        jugador_id, x, y = jugador
-        jugador_x = (x - 1) * grid_size
-        jugador_y = (y - 1) * grid_size
-        pygame.draw.rect(screen, RED, (jugador_x, jugador_y, grid_size, grid_size))
     # Para recopilar votos
     votos = []  # Lista para almacenar los votos
-    tiempo_votacion =6  # Duración de la votación en segundos
+    start_votacion, end_votacion = get_votacion_times()
+    current_time = datetime.now() + timedelta(hours=5)
+    remaining_time = (end_votacion - current_time).total_seconds()
     tiempo_inicio_votacion = pygame.time.get_ticks()  # Tiempo de inicio de la votación
 
     manager = pygame_gui.UIManager((900, 800))
@@ -970,7 +981,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
         # Verificar si han pasado 20 segundos para enviar los votos
-        if (pygame.time.get_ticks() - tiempo_inicio_votacion) >= (tiempo_votacion * 1000):
+        if (pygame.time.get_ticks() - tiempo_inicio_votacion) >= (remaining_time * 1000):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
                 registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
