@@ -20,6 +20,7 @@ car_height = grid_size
 velocidad = 40
 
 
+
 def conectar_db():
     try:
         connection = pymysql.connect(
@@ -74,32 +75,16 @@ def registrar_eventos(eventos):
 
 def votar():
     eventos = []
-    
-    # Llamar a "start_voto" para actualizar los tiempos de votación
-    connection = conectar_db()
-    if connection:
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute("CALL start_voto();")
-                connection.commit()  # Confirmar la ejecución
-        except pymysql.MySQLError as e:
-            print(f"Error ejecutando start_voto: {e}")
-        finally:
-            connection.close()
-    
-    # Ahora obtenemos los tiempos de votación actualizados
     start_votacion, end_votacion = get_votacion_times()
     if not start_votacion or not end_votacion:
         print("No se pudo obtener los tiempos de votación.")
         return
-    
-    current_time = datetime.now() + timedelta(hours=5)  # Ajustar zona horaria si es necesario
+    current_time = datetime.now() + timedelta(hours=5)
     remaining_time = (end_votacion - current_time).total_seconds()
-
     if remaining_time <= 0:
-        print("La votación ya ha terminado.")
-        return
-    
+            print("La votación ya ha terminado.")
+            return
+
     print(f"Comienza la votación. Tienes {int(remaining_time)} segundos para votar.")
     
     # Tiempo de votación
@@ -128,7 +113,6 @@ def votar():
         registrar_eventos(eventos)
     else:
         print("No se registraron votos.")
-
 
 def registrar_evento(tecla, user_id):
     connection = conectar_db()
@@ -930,7 +914,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
     start_votacion, end_votacion = get_votacion_times()
     current_time = datetime.now() + timedelta(hours=5)
     remaining_time = (end_votacion - current_time).total_seconds()
-    tiempo_inicio_votacion = time.time() # Tiempo de inicio de la votación
+    tiempo_inicio_votacion = pygame.time.get_ticks()  # Tiempo de inicio de la votación
 
     manager = pygame_gui.UIManager((900, 800))
     dibujar_botones(manager)
@@ -1011,12 +995,7 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
         actualizar_matriz(matriz, obstaculos_horizontales, 1)
 
         # Verificar si han pasado 20 segundos para enviar los votos
-        if (time.time() - tiempo_inicio_votacion) >= (remaining_time):
-            print(f"Hora actual: {current_time}")
-            print(f"Hora de inicio de votación: {start_votacion}")
-            print(f"Hora de fin de votación: {end_votacion}")
-            print(f"Tiempo restante para votar: {remaining_time} segundos")
-
+        if (pygame.time.get_ticks() - tiempo_inicio_votacion) >= (remaining_time * 1000):
             print("Tiempo de votación terminado. Enviando votos a la base de datos.")
             if votos:  # Solo registrar si hay votos
                 registrar_eventos([(user_id, voto) for voto in votos])  # Registrar todos los votos en la base de datos
