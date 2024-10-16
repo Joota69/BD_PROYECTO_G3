@@ -35,25 +35,6 @@ def conectar_db():
         return None
    #########################################################LOGIN#####################################################
 
-def get_votacion_times():
-    connection = conectar_db()
-    if connection:
-        cursor = connection.cursor()
-        cursor.execute("SELECT start_votacion, end_votacion FROM Tiempodevotacion ORDER BY idtiempo DESC LIMIT 1;")
-        result = cursor.fetchone()
-        cursor.close()
-        connection.close()
-        if result:
-            start_votacion, end_votacion = result
-            return start_votacion, end_votacion
-        else:
-            print("No se encontraron tiempos de votación.")
-            return None, None
-    else:
-        print("No se pudo establecer la conexión a la base de datos.")
-        return None, None
-    
-
 
 def registrar_eventos(eventos):
     connection = conectar_db()
@@ -70,7 +51,24 @@ def registrar_eventos(eventos):
         print(f"Error executing query: {e}")
     finally:
         connection.close()
-        
+
+def get_votacion_times():
+    connection = conectar_db()
+    if connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT start_votacion, end_votacion FROM Tiempodevotacion ORDER BY idtiempo DESC LIMIT 1;")
+        result = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        if result:
+            start_votacion, end_votacion = result
+            return start_votacion, end_votacion
+        else:
+            print("No se encontraron tiempos de votación.")
+            return None, None
+    else:
+        print("No se pudo establecer la conexión a la base de datos.")
+        return None, None     
 
 def votar():
     eventos = []
@@ -93,7 +91,7 @@ def votar():
         print("No se pudo obtener los tiempos de votación.")
         return
     
-    current_time = datetime.now() + timedelta(hours=5)  # Ajustar zona horaria si es necesario
+    current_time = datetime.now() + timedelta(hours=5)  
     remaining_time = (end_votacion - current_time).total_seconds()
 
     if remaining_time <= 0:
@@ -128,6 +126,9 @@ def votar():
         registrar_eventos(eventos)
     else:
         print("No se registraron votos.")
+
+
+
 
 
 def registrar_evento(tecla, user_id):
