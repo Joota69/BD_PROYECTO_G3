@@ -3,8 +3,12 @@ import random
 import pymysql
 import pygame_gui
 import time
+import pygame.mixer
 
 pygame.init()
+pygame.mixer.music.load('Audio de WhatsApp 2024-10-15 a las 11.43.18_e27bd3b6.mp3')  # Ruta a tu archivo de música
+pygame.mixer.music.set_volume(0.7) 
+pygame.mixer.music.play(-1) 
 
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
@@ -106,10 +110,19 @@ def crear_cuenta():
     running = True
     username = ""
     password = ""
-    focus = "username"  
 
-    input_box_username = pygame.Rect(226, 191, 140, 32)
-    input_box_password = pygame.Rect(220, 242, 140, 32)
+    screen_width = 900
+    screen_height = 800
+
+    # Cargar la imagen de fondo
+    fondo = pygame.image.load('pngtree-retro-futuristic-sci-fi-retrowave-vj-videogame-image_13012267.jpg')  # Ruta a tu imagen de fondo
+    fondo = pygame.transform.scale(fondo, (screen_width, screen_height))  # Ajustar la imagen al tamaño de la pantalla
+
+    input_width = 300
+    input_height = 40
+    input_box_username = pygame.Rect((screen_width - input_width) // 2, 300, input_width, input_height)
+    input_box_password = pygame.Rect((screen_width - input_width) // 2, 370, input_width, input_height)
+
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
     color_username = color_inactive
@@ -117,31 +130,50 @@ def crear_cuenta():
     active_username = False
     active_password = False
 
-    while running:
-        screen.fill(WHITE)
-        font = pygame.font.SysFont(None, 55)
-        mensaje = font.render("Crear Cuenta", True, BLACK)
-        screen.blit(mensaje, (120, 100))
+    # Cambiar tamaño y color del título "Crear Cuenta"
+    font = pygame.font.SysFont(None, 65)  # Tamaño del título
+    RED = (255, 0, 0)  # Color negro para el texto
 
-        font_small = pygame.font.SysFont(None, 30)
+    # Cambiar tamaño y color del texto "Username" y "Password"
+    font_small = pygame.font.SysFont(None, 40)  # Tamaño más pequeño para los textos
+    GREEN = (0, 255, 0)  # Definir el color verde para el botón "Regresar"
+
+    while running:
+        screen.blit(fondo, (0, 0))  # Dibujar la imagen de fondo en la pantalla
+
+        # Título "Crear Cuenta" centrado
+        mensaje = font.render("Crear Cuenta", True, RED)
+        mensaje_rect = mensaje.get_rect(center=(screen_width // 2, 100))
+        screen.blit(mensaje, mensaje_rect)
+
+        # Mostrar las etiquetas al lado de los cuadros de entrada
         label_username = font_small.render("Username:", True, BLACK)
         label_password = font_small.render("Password:", True, BLACK)
-        user_text = font_small.render(username, True, BLACK)
-        pass_text = font_small.render('*' * len(password), True, BLACK)
-        
-        # Render the labels and current text.
-        screen.blit(label_username, (120, 200))
-        screen.blit(label_password, (120, 250))
-        screen.blit(user_text, (input_box_username.x+5, input_box_username.y+5))
-        screen.blit(pass_text, (input_box_password.x+5, input_box_password.y+5))
-        
-        # Draw the input boxes.
+
+        # Colocar las etiquetas al lado de los cuadros de entrada
+        label_username_rect = label_username.get_rect(midright=(input_box_username.x - 10, input_box_username.centery))
+        label_password_rect = label_password.get_rect(midright=(input_box_password.x - 10, input_box_password.centery))
+
+        screen.blit(label_username, label_username_rect)
+        screen.blit(label_password, label_password_rect)
+
+        # Dibujar los cuadros de entrada
         pygame.draw.rect(screen, color_username, input_box_username, 2)
         pygame.draw.rect(screen, color_password, input_box_password, 2)
 
-        regresar_text = font_small.render("Regresar", True, BLACK)
-        screen.blit(regresar_text, (120, 300))
-        
+        # Mostrar el texto ingresado en Username y Password dentro de los cuadros
+        user_text = font_small.render(username, True, BLACK)  # Mostrar el texto del username
+        pass_text = font_small.render('*' * len(password), True, BLACK)  # Mostrar la contraseña como asteriscos
+
+        # Alinear el texto ingresado dentro de los cuadros
+        screen.blit(user_text, (input_box_username.x + 10, input_box_username.y + 5))  # Mostrar dentro del cuadro de Username
+        screen.blit(pass_text, (input_box_password.x + 10, input_box_password.y + 5))  # Mostrar dentro del cuadro de Password
+
+        # Botón "Regresar" centrado
+        regresar_text = font_small.render("Regresar", True, GREEN)
+        regresar_rect = regresar_text.get_rect(center=(screen_width // 2, 450))
+        screen.blit(regresar_text, regresar_rect)
+
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -149,36 +181,42 @@ def crear_cuenta():
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
+                # Si el cuadro de texto de username está activo, capturar la entrada
                 if active_username:
                     if event.key == pygame.K_BACKSPACE:
-                        username = username[:-1]
+                        username = username[:-1]  # Eliminar el último carácter
                     else:
-                        username += event.unicode
+                        username += event.unicode  # Añadir el nuevo carácter
+                # Si el cuadro de texto de password está activo, capturar la entrada
                 if active_password:
                     if event.key == pygame.K_BACKSPACE:
-                        password = password[:-1]
+                        password = password[:-1]  # Eliminar el último carácter
                     else:
-                        password += event.unicode
+                        password += event.unicode  # Añadir el nuevo carácter
+                # Si el usuario presiona Enter, salir de la creación de cuenta
                 if event.key == pygame.K_RETURN:
                     running = False
-                    
+
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # If the user clicked on the input_box_username rect.
+                # Si el usuario hace clic en el cuadro de entrada del nombre de usuario
                 if input_box_username.collidepoint(event.pos):
                     active_username = not active_username
                 else:
                     active_username = False
-                # If the user clicked on the input_box_password rect.
+                # Si el usuario hace clic en el cuadro de entrada de la contraseña
                 if input_box_password.collidepoint(event.pos):
                     active_password = not active_password
                 else:
                     active_password = False
-                # Change the current color of the input boxes.
+                # Cambiar el color de los cuadros de entrada según el enfoque
                 color_username = color_active if active_username else color_inactive
                 color_password = color_active if active_password else color_inactive
 
-                if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
-                    return 
+                # Comprobar si el usuario hace clic en el botón "Regresar"
+                if regresar_rect.collidepoint(event.pos):
+                    return
+
+
 
 
     selected_rank = select_rank()
@@ -193,13 +231,13 @@ def crear_cuenta():
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM Usuarios WHERE UserName='{username}'")
+            cursor.callproc('ObtenerUsuarioPorNombre', (username,))
             if cursor.fetchone():
                 print("Username already exists!")
                 return None
 
             # Insert new user into the database
-            cursor.execute(f"INSERT INTO Usuarios (UserName, Contraseña, idRango) VALUES ('{username}', '{password}', {selected_rank})")
+            cursor.callproc('InsertarUsuario', (username, password, selected_rank))
             connection.commit()
             return username
     except pymysql.MySQLError as e:
@@ -212,13 +250,22 @@ def login():
         print("Connection to database failed.")
         return None
     
+    # Cargar la imagen de fondo
+    fondo = pygame.image.load('pngtree-retro-futuristic-sci-fi-retrowave-vj-videogame-image_13012267.jpg')
+    fondo = pygame.transform.scale(fondo, (900, 800))  # Ajustar el tamaño de la imagen al tamaño de la pantalla
+
     running = True
     username = ""
     password = ""
-    focus = "username"  
 
-    input_box_username = pygame.Rect(226, 191, 140, 32)
-    input_box_password = pygame.Rect(221, 242, 140, 32)
+    screen_width = 900
+    screen_height = 800
+
+    input_width = 300
+    input_height = 40
+    input_box_username = pygame.Rect((screen_width - input_width) // 2, 300, input_width, input_height)
+    input_box_password = pygame.Rect((screen_width - input_width) // 2, 370, input_width, input_height)
+
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
     color_username = color_inactive
@@ -226,26 +273,53 @@ def login():
     active_username = False
     active_password = False
 
+    # Cambiar tamaño y color del título "Login"
+    font = pygame.font.SysFont(None, 70)  # Hacer el texto más grande
+    RED = (255, 0, 0)  # Definir el color rojo para el título "Login"
+    
+    # Cambiar tamaño y color del texto "Username" y "Password"
+    font_small = pygame.font.SysFont(None, 40)  # Hacer el texto más grande
+    BLACK = (0, 0, 0)  # Definir el color negro para el texto
+    
+    # Cambiar color del botón "Crear Cuenta"
+    GREEN = (0, 255, 0)  # Definir el color verde para "Crear Cuenta"
+
     while running:
-        screen.fill(WHITE)
-        font = pygame.font.SysFont(None, 55)
-        mensaje = font.render("Login", True, BLACK)
-        screen.blit(mensaje, (120, 100))
+        screen.blit(fondo, (0, 0))  # Dibujar la imagen de fondo en la pantalla
 
-        font_small = pygame.font.SysFont(None, 30)
-        user_text = font_small.render(f"Username: {username}", True, BLACK)
-        pass_text = font_small.render(f"Password: {'*' * len(password)}", True, BLACK)
+        # Título "Login"
+        mensaje = font.render("Login", True, RED)  # Cambiar el color aquí
+        mensaje_rect = mensaje.get_rect(center=(screen_width // 2, 200))  # Centrar el título en la parte superior
+        screen.blit(mensaje, mensaje_rect)
 
-        screen.blit(user_text, (120, 200))
-        screen.blit(pass_text, (120, 250))
-        
+        # Mostrar las etiquetas al lado de los cuadros de entrada
+        user_label = font_small.render("Username:", True, BLACK)
+        pass_label = font_small.render("Password:", True, BLACK)
+
+        # Colocar las etiquetas al lado de los cuadros de entrada
+        user_label_rect = user_label.get_rect(midright=(input_box_username.x - 10, input_box_username.centery))
+        pass_label_rect = pass_label.get_rect(midright=(input_box_password.x - 10, input_box_password.centery))
+
+        screen.blit(user_label, user_label_rect)
+        screen.blit(pass_label, pass_label_rect)
+
+        # Dibujar los cuadros de entrada centrados
         pygame.draw.rect(screen, color_username, input_box_username, 2)
         pygame.draw.rect(screen, color_password, input_box_password, 2)
 
-        # Botón para crear cuenta
-        crear_cuenta_text = font_small.render("Crear Cuenta", True, BLACK)
-        screen.blit(crear_cuenta_text, (120, 300))
-        
+        # Mostrar el texto ingresado en Username y Password dentro de los cuadros
+        user_text = font_small.render(username, True, BLACK)  # Mostrar el texto del username
+        pass_text = font_small.render('*' * len(password), True, BLACK)  # Mostrar el texto de la contraseña como asteriscos
+
+        # Alinear el texto ingresado dentro de los cuadros
+        screen.blit(user_text, (input_box_username.x + 10, input_box_username.y + 5))  # Mostrar dentro del cuadro de Username
+        screen.blit(pass_text, (input_box_password.x + 10, input_box_password.y + 5))  # Mostrar dentro del cuadro de Password
+
+        # Botón "Crear Cuenta" centrado
+        crear_cuenta_text = font_small.render("Crear Cuenta", True, GREEN)  # Cambiar el color aquí
+        crear_cuenta_rect = crear_cuenta_text.get_rect(center=(screen_width // 2, 450))
+        screen.blit(crear_cuenta_text, crear_cuenta_rect)
+
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -253,41 +327,44 @@ def login():
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
+                # Si el cuadro de texto de username está activo, capturar la entrada
                 if active_username:
                     if event.key == pygame.K_BACKSPACE:
-                        username = username[:-1]
+                        username = username[:-1]  # Eliminar el último carácter
                     else:
-                        username += event.unicode
+                        username += event.unicode  # Añadir el nuevo carácter
+                # Si el cuadro de texto de password está activo, capturar la entrada
                 if active_password:
                     if event.key == pygame.K_BACKSPACE:
-                        password = password[:-1]
+                        password = password[:-1]  # Eliminar el último carácter
                     else:
-                        password += event.unicode
+                        password += event.unicode  # Añadir el nuevo carácter
+                # Si el usuario presiona Enter, salir del login
                 if event.key == pygame.K_RETURN:
                     running = False
                     
             if event.type == pygame.MOUSEBUTTONDOWN:
-                # If the user clicked on the input_box_username rect.
+                # Si el usuario hace clic en el cuadro de entrada del nombre de usuario
                 if input_box_username.collidepoint(event.pos):
                     active_username = not active_username
                 else:
                     active_username = False
-                # If the user clicked on the input_box_password rect.
+                # Si el usuario hace clic en el cuadro de entrada de la contraseña
                 if input_box_password.collidepoint(event.pos):
                     active_password = not active_password
                 else:
                     active_password = False
-                # Change the current color of the input boxes.
+                # Cambiar el color de los cuadros de entrada según el enfoque
                 color_username = color_active if active_username else color_inactive
                 color_password = color_active if active_password else color_inactive
-                # Check if the user clicked on the "Crear Cuenta" button.
-                if 120 <= event.pos[0] <= 280 and 300 <= event.pos[1] <= 330:
+
+                # Comprobar si el usuario hace clic en el botón "Crear Cuenta"
+                if crear_cuenta_rect.collidepoint(event.pos):
                     crear_cuenta()
 
     try:
         with connection.cursor() as cursor:
-            query = f"SELECT IdUsuario, Contraseña FROM Usuarios WHERE UserName='{username}' AND Contraseña='{password}'"
-            cursor.execute(query)
+            cursor.callproc('ObtenerUsuario', (username, password))
             result = cursor.fetchone()
             if result and result[1] == password:
                 return result[0]  # Return User ID
@@ -297,6 +374,9 @@ def login():
         print(f"Error executing query: {e}")
         return None
 
+
+
+
 def select_rank():
     connection = conectar_db()
     if connection is None:
@@ -305,18 +385,46 @@ def select_rank():
 
     running = True
     selected_rank = None
+    screen_width = 900
+    screen_height = 800
+
+    # Cargar la imagen de fondo
+    fondo = pygame.image.load('pngtree-retro-futuristic-sci-fi-retrowave-vj-videogame-image_13012267.jpg')  # Ruta a tu imagen de fondo
+    fondo = pygame.transform.scale(fondo, (screen_width, screen_height))  # Ajustar la imagen al tamaño de la pantalla
+
+    font = pygame.font.SysFont(None, 70)  # Fuente para el título
+    font_small = pygame.font.SysFont(None, 50)  # Fuente más grande para las opciones
+    BLACK = (0, 0, 0)  # Color negro para el texto de las opciones
+    RED = (255, 0, 0)  # Color rojo para el título
+    WHITE = (255, 255, 255)  # Color blanco para los rectángulos
+    BLUE = (0, 0, 255)  # Color azul para los bordes de los rectángulos
 
     while running:
-        screen.fill(WHITE)
-        font = pygame.font.SysFont(None, 55)
-        mensaje = font.render("Select Rank", True, BLACK)
-        screen.blit(mensaje, (120, 100))
+        screen.blit(fondo, (0, 0))  # Dibujar la imagen de fondo en la pantalla
 
-        font_small = pygame.font.SysFont(None, 30)
-        ranks = ["Preione 1: Noob", "Presione 2: Pro", "Presione 3: Hacker"]
+        # Título "Select Rank" centrado en rojo
+        mensaje = font.render("Select Rank", True, RED)
+        mensaje_rect = mensaje.get_rect(center=(screen_width // 2, 100))
+        screen.blit(mensaje, mensaje_rect)
+
+        # Lista de rangos para seleccionar
+        ranks = ["Presione 1: Noob", "Presione 2: Pro", "Presione 3: Hacker"]
+        rect_width = 400
+        rect_height = 60
+        rect_margin = 20  # Espacio entre los rectángulos
+
         for i, rank in enumerate(ranks):
+            # Dibujar un rectángulo detrás de cada opción
+            rect_x = (screen_width - rect_width) // 2
+            rect_y = 250 + i * (rect_height + rect_margin)  # Espacio entre los rectángulos
+            rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
+            pygame.draw.rect(screen, WHITE, rect)  # Rellenar el rectángulo en blanco
+            pygame.draw.rect(screen, BLUE, rect, 5)  # Bordes azules de 5 píxeles de grosor
+
+            # Mostrar el texto de la opción dentro del rectángulo
             rank_text = font_small.render(rank, True, BLACK)
-            screen.blit(rank_text, (120, 200 + i * 50))
+            rank_text_rect = rank_text.get_rect(center=rect.center)  # Centrar el texto dentro del rectángulo
+            screen.blit(rank_text, rank_text_rect)
 
         pygame.display.update()
 
@@ -337,8 +445,6 @@ def select_rank():
 
     return selected_rank
 
-
-
                                 ##############################Juego#######################################
 
 
@@ -357,18 +463,46 @@ def actualizar_matriz(matriz, obstaculos, valor):
 def seleccionar_modo():
     running = True
     modo = None
+    screen_width = 900
+    screen_height = 800
+
+    # Cargar la imagen de fondo
+    fondo = pygame.image.load('pngtree-retro-futuristic-sci-fi-retrowave-vj-videogame-image_13012267.jpg')  # Ruta a tu imagen de fondo
+    fondo = pygame.transform.scale(fondo, (screen_width, screen_height))  # Ajustar la imagen al tamaño de la pantalla
+
+    font = pygame.font.SysFont(None, 70)  # Fuente más grande para el título
+    font_small = pygame.font.SysFont(None, 50)  # Fuente más grande para las opciones
+    BLACK = (0, 0, 0)  # Color negro para el texto de las opciones
+    RED = (255, 0, 0)  # Color rojo para el título
+    WHITE = (255, 255, 255)  # Color blanco para los rectángulos
+    BLUE = (0, 0, 255)  # Color azul para los bordes de los rectángulos
 
     while running:
-        screen.fill(WHITE)
-        font = pygame.font.SysFont(None, 55)
-        mensaje = font.render("Seleccionar Modo", True, BLACK)
-        screen.blit(mensaje, (120, 100))
+        screen.blit(fondo, (0, 0))  # Dibujar la imagen de fondo en la pantalla
 
-        font_small = pygame.font.SysFont(None, 30)
-        modo_texto_1 = font_small.render("1. Visualizar", True, BLACK)
-        modo_texto_2 = font_small.render("2. Jugar", True, BLACK)
-        screen.blit(modo_texto_1, (120, 200))
-        screen.blit(modo_texto_2, (120, 250))
+        # Título "Seleccionar Modo" centrado en rojo
+        mensaje = font.render("Seleccionar Modo", True, RED)
+        mensaje_rect = mensaje.get_rect(center=(screen_width // 2, 100))
+        screen.blit(mensaje, mensaje_rect)
+
+        # Opciones de modo para seleccionar
+        modos = ["1. Visualizar", "2. Jugar"]
+        rect_width = 400
+        rect_height = 60
+        rect_margin = 20  # Espacio entre los rectángulos
+
+        for i, modo_texto in enumerate(modos):
+            # Dibujar un rectángulo detrás de cada opción
+            rect_x = (screen_width - rect_width) // 2
+            rect_y = 250 + i * (rect_height + rect_margin)  # Espacio entre los rectángulos
+            rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
+            pygame.draw.rect(screen, WHITE, rect)  # Rellenar el rectángulo en blanco
+            pygame.draw.rect(screen, BLUE, rect, 5)  # Bordes azules de 5 píxeles de grosor
+
+            # Mostrar el texto de la opción dentro del rectángulo
+            modo_text = font_small.render(modo_texto, True, BLACK)
+            modo_text_rect = modo_text.get_rect(center=rect.center)  # Centrar el texto dentro del rectángulo
+            screen.blit(modo_text, modo_text_rect)
 
         pygame.display.update()
 
@@ -382,9 +516,11 @@ def seleccionar_modo():
                     running = False
                 elif event.key == pygame.K_2:
                     modo = "jugar"
+                    pygame.mixer.music.set_volume(0.1)
                     running = False
 
     return modo
+
 
 
 
@@ -492,7 +628,7 @@ def visualizar_juego():
                 car_x < obstaculo[0] + obstaculo[2] and
                 car_x + grid_size > obstaculo[0]):
                 print("¡Choque!")
-                mostrar_pantalla_reinicio(None)
+                mostrar_pantalla_reinicio(user_id)
                 running = False
 
         for obstaculo in obstaculos_horizontales:
@@ -504,7 +640,7 @@ def visualizar_juego():
                 car_x < obstaculo[0] + obstaculo[2] and
                 car_x + grid_size > obstaculo[0]):
                 print("¡Choque!")
-                mostrar_pantalla_reinicio(None)
+                mostrar_pantalla_reinicio(user_id)
                 running = False
 
         actualizar_matriz(matriz, obstaculos_verticales, 1)
@@ -531,7 +667,7 @@ def guardar_obstaculos_db():
                 tipo = 'vertical' if obstaculo in obstaculos_verticales else 'horizontal'
                 x_celda = obstaculo[0] // grid_size
                 y_celda = obstaculo[1] // grid_size
-                cursor.execute(f"UPDATE Obstaculos SET x = {x_celda}, y = {y_celda}, tipo = '{tipo}' WHERE idObstaculos = {i + 1}")
+                cursor.callproc('ActualizarObstaculo', (x_celda, y_celda, tipo, i + 1))
             connection.commit()
     except pymysql.MySQLError as e:
         print(f"Error executing query: {e}")
@@ -624,11 +760,7 @@ def actualizar_posicion_jugador(user_id, x, y):
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(f"""
-                INSERT INTO Jugador (IdJugador, x, y) 
-                VALUES ({user_id}, {x}, {y})
-                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
-            """)
+            cursor.callproc('InsertarOActualizarJugador', (user_id, x, y))
             connection.commit()
             print("Inserción/Actualización exitosa")
     except pymysql.MySQLError as e:
@@ -704,6 +836,7 @@ def mostrar_pantalla_reinicio(user_id):
                     esperando = False
                     reiniciar_juego(user_id)
     resetear_posiciones()
+
     
     
 
@@ -716,21 +849,7 @@ def resetear_posiciones():
     try:
         with connection.cursor() as cursor:
             # Actualizar los obstáculos a posiciones en los bordes del área de juego
-            cursor.execute("UPDATE Obstaculos SET x = CASE idObstaculos "
-                           "WHEN 1 THEN 0 "  # Borde izquierdo
-                           "WHEN 2 THEN 7 "  # Borde derecho
-                           "WHEN 3 THEN 0 "  # Borde izquierdo
-                           "WHEN 4 THEN 7 END, "  # Borde derecho
-                           "y = CASE idObstaculos "
-                           "WHEN 1 THEN 0 "  # Borde superior
-                           "WHEN 2 THEN 0 "  # Borde superior
-                           "WHEN 3 THEN 7 "  # Borde inferior
-                           "WHEN 4 THEN 7 END "  # Borde inferior
-                           "WHERE idObstaculos IN (1, 2, 3, 4)")
-
-            # Actualizar la posición del jugador a su posición original
-            cursor.execute("UPDATE Jugador SET x = 4, y = 4 WHERE IdJugador = 1")
-
+            cursor.callproc('Reinicio_obstaculosYJugador')
             connection.commit()  # Confirmar los cambios
             print("Posiciones de obstáculos y jugador reseteadas a sus valores originales.")
     except pymysql.MySQLError as e:

@@ -432,8 +432,7 @@ def start_game():
     # Inicializa los valores de `id_jugador` y `tecla_ganadora_orden`
     id_jugador = None  # Puedes obtener este valor más adelante
     tecla_ganadora_orden = None  # O obtener este valor después
-
-   
+    
     votaciones = 0  # Resetear el contador de votaciones
 
     while True:
@@ -441,11 +440,26 @@ def start_game():
         if modo == "visualizar":
             visualizar_juego()
         elif modo == "jugar":
+            # Llamar al procedimiento almacenado `start_voto` al seleccionar "Jugar"
+            connection = conectar_db()
+            if connection is None:
+                print("No se pudo establecer la conexión a la base de datos.")
+                return
+
+            try:
+                with connection.cursor() as cursor:
+                    # Ejecutar el procedimiento almacenado `start_voto`
+                    cursor.execute("CALL start_voto()")
+                    connection.commit()  # Confirmar cambios
+                    print("Procedimiento almacenado `start_voto` ejecutado con éxito al seleccionar 'Jugar'.")
+            except pymysql.MySQLError as e:
+                print(f"Error al ejecutar el procedimiento almacenado: {e}")
+            finally:
+                connection.close()
+
             if id_jugador is None:
-                # Aquí obtén el valor de `id_jugador` si es necesario
                 id_jugador = user_id  # O de donde corresponda
             if tecla_ganadora_orden is None:
-                # Aquí obtén el valor de `tecla_ganadora_orden` si es necesario
                 tecla_ganadora_orden = 1  # O algún valor válido
             juego(user_id, id_jugador, tecla_ganadora_orden)  # Pasar los tres argumentos
 
