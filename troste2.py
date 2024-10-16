@@ -685,8 +685,8 @@ def manejar_movimiento_obstaculos(tiempo_total):
 
 
 
-def actualizar_posicion_jugador(user_id, x, y):
-    print(f"Actualizando posición: IdJugador={user_id}, x={x}, y={y}")
+def actualizar_posicion_jugador( x, y):
+    print(f"Actualizando posición:  x={x}, y={y}")
     connection = conectar_db()
     if connection is None:
         print("Connection to database failed.")
@@ -695,9 +695,9 @@ def actualizar_posicion_jugador(user_id, x, y):
     try:
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                INSERT INTO Jugador (IdJugador, x, y) 
-                VALUES ({user_id}, {x}, {y})
-                ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y)
+                UPDATE Jugador
+                SET x = 4, y = 4
+                WHERE id = 1;
             """)
             connection.commit()
             print("Inserción/Actualización exitosa")
@@ -710,7 +710,7 @@ def imprimir_posicion_carro(user_id):
     x_cuadricula = (car_x // grid_size) + 1
     y_cuadricula = (car_y // grid_size) + 1
     print(f"Posición del carro: x={x_cuadricula}, y={y_cuadricula}")
-    actualizar_posicion_jugador(user_id, x_cuadricula, y_cuadricula)
+    actualizar_posicion_jugador( x_cuadricula, y_cuadricula)
 
 def mover_carro(letra):
     global car_x, car_y
@@ -1036,22 +1036,6 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                             cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
                             connection.commit()  # Asegurarse de que los cambios se guarden
 
-                        print(f"Error executing query: {e}")
-                    finally:
-                        connection.close()
-            else:
-                print("No se registraron votos.")
-
-            # Reiniciar la votación
-            votos.clear()  # Limpiar la lista de votos
-            tiempo_inicio_votacion = time.time() # Reiniciar el tiempo de votacion
-            start_votacion, end_votacion = get_votacion_times() # Obtener nuevo tiempo de votacion
-            
-            if end_votacion==time.time():
-                connection = conectar_db()
-                if connection:
-                    try:
-                        with connection.cursor() as cursor:
                             cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
                             result = cursor.fetchone()
                             if result:
@@ -1064,9 +1048,14 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                         print(f"Error executing query: {e}")
                     finally:
                         connection.close()
-                else:
-                    print("No se registraron votos.")
-                
+            else:
+                print("No se registraron votos.")
+
+            # Reiniciar la votación
+            votos.clear()  # Limpiar la lista de votos
+            tiempo_inicio_votacion = time.time() # Reiniciar el tiempo de votacion
+            start_votacion, end_votacion = get_votacion_times() # Obtener nuevo tiempo de votacion
+
         # Enviar posición del carro a la base de datos cada 4 segundos
         if tiempo_envio >= 5:  # Verificar si han pasado 4 segundos
             print("Enviando posición del carro a la base de datos")
