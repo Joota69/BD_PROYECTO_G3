@@ -1036,15 +1036,6 @@ def juego(user_id, id_jugador, tecla_ganadora_orden):
                             cursor.execute("CALL ObtenerTeclaGanadora() ")  # Llamar al procedimiento almacenado
                             connection.commit()  # Asegurarse de que los cambios se guarden
 
-                            cursor.execute("SELECT nk FROM Tecla_ganadora ORDER BY Orden DESC LIMIT 1")
-                            result = cursor.fetchone()
-                            if result:
-                                tecla_ganadora = result[0]
-                                print(f'Tecla ganadora es:{tecla_ganadora}')
-                                mover_carro(tecla_ganadora)
-                            else:
-                                print("No se encontró ninguna tecla ganadora.")
-                    except pymysql.MySQLError as e:
                         print(f"Error executing query: {e}")
                     finally:
                         connection.close()
